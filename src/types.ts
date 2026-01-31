@@ -11,6 +11,16 @@ export interface UserProfile {
   created_at: string;
 }
 
+export interface UserSettings {
+  user_id: string;
+  notif_due_date: boolean;
+  notif_email: boolean;
+  language: string;
+  timezone: string;
+  two_factor_enabled: boolean;
+  updated_at: string;
+}
+
 export interface Account {
   id: string;
   user_id: string;
@@ -82,4 +92,4 @@ export interface DashboardStats {
 }
 
 // Dummy constant to ensure ESM loader treats this as a module
-export const VERSION = '1.0.0';
+export const VERSION = '1.1.0';

@@ -1,3 +1,4 @@
+
 // C:\codingVibes\nuansasolution\.subpath\akuntansi\src\contexts\NotificationContext.tsx
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
@@ -14,7 +15,7 @@ interface Notification {
 }
 
 interface NotificationContextType {
-  notify: (message: string, type: NotificationType) => void;
+  notify: (message: string, type: NotificationType) => string;
   removeNotify: (id: string) => void;
 }
 
@@ -23,13 +24,14 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  const notify = (message: string, type: NotificationType) => {
+  const notify = (message: string, type: NotificationType): string => {
     const id = Math.random().toString(36).substring(2, 9);
     setNotifications((prev) => [...prev, { id, message, type }]);
     
     if (type !== 'loading') {
       setTimeout(() => removeNotify(id), 5000);
     }
+    return id;
   };
 
   const removeNotify = (id: string) => {

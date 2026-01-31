@@ -21,7 +21,8 @@ import {
   BarChart3,
   Waves,
   Loader2,
-  X
+  X,
+  User
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../contexts/LayoutContext';
@@ -76,10 +77,16 @@ export default function Sidebar() {
 
   useEffect(() => {
     if (user?.id) {
-      supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => {
-        if (data) setProfile(data);
-        setLoading(false);
-      });
+      // Menggunakan maybeSingle untuk menghindari error jika profil tidak ada
+      supabase.from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .maybeSingle()
+        .then(({ data, error }) => {
+          if (data) setProfile(data);
+          if (error) console.error("Error fetching profile:", error.message);
+          setLoading(false);
+        });
     }
   }, [user]);
 
@@ -100,14 +107,13 @@ export default function Sidebar() {
               </p>
             </div>
           </div>
-          {/* Close button only for mobile */}
           <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-white/80">
             <X size={20} />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide pb-24 md:pb-6">
+      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide pb-2">
         <NavLink
           to="/dashboard"
           className={({ isActive }) => 
@@ -149,7 +155,20 @@ export default function Sidebar() {
         ))}
       </div>
 
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-1">
+        <NavLink
+          to="/profile"
+          className={({ isActive }) => 
+            `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group font-bold ${
+              isActive 
+              ? 'bg-[#6200EE]/10 text-[#6200EE]' 
+              : 'text-slate-600 hover:bg-slate-50'
+            }`
+          }
+        >
+          <User size={18} className={location.pathname === '/profile' ? 'text-[#6200EE]' : 'text-slate-400'} />
+          <span className="text-sm">Profil Pengguna</span>
+        </NavLink>
         <button onClick={() => signOut()} className="w-full flex items-center gap-3 px-4 py-3 text-rose-600 hover:bg-rose-50 rounded-xl transition-all group font-bold">
           <LogOut size={18} />
           <span className="text-sm">Keluar Aplikasi</span>
@@ -160,16 +179,13 @@ export default function Sidebar() {
 
   return (
     <>
-      {/* Sidebar Desktop - Selalu tampil di md ke atas */}
       <aside className="hidden md:flex flex-col sticky top-0 h-screen z-40">
         <SidebarContent />
       </aside>
 
-      {/* Sidebar Mobile - Muncul sebagai Drawer */}
       <AnimatePresence>
         {isSidebarOpen && (
           <>
-            {/* Overlay */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -177,7 +193,6 @@ export default function Sidebar() {
               onClick={() => setIsSidebarOpen(false)}
               className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] md:hidden"
             />
-            {/* Drawer */}
             <motion.aside
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}

@@ -12,7 +12,7 @@ import { generateA4Report, downloadPDF } from '../../utils/handlerPDF';
 import { useNotify } from '../../contexts/NotificationContext';
 
 export default function Reports() {
-  const { notify } = useNotify();
+  const { notify, removeNotify } = useNotify();
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ export default function Reports() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]); // Refetch if tab changes
+  }, [activeTab]); 
 
   const fetchData = async () => {
     setLoading(true);
@@ -57,131 +57,151 @@ export default function Reports() {
   };
 
   const handleExportPDF = () => {
-    notify('Sedang menyiapkan PDF...', 'loading');
-    const title = activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca';
-    const subtitle = `Periode: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+    const loadingId = notify('Sedang menyiapkan PDF...', 'loading');
     
-    let columns = activeTab === 'profit-loss' ? ['Kategori Akun', 'Saldo (IDR)'] : ['Akun', 'Tipe', 'Saldo (IDR)'];
-    let rows: any[][] = [];
+    setTimeout(() => {
+      try {
+        const title = activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca';
+        const subtitle = `Periode Berjalan: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
+        
+        let columns = activeTab === 'profit-loss' ? ['Kategori Akun', 'Saldo (IDR)'] : ['Akun', 'Tipe', 'Saldo (IDR)'];
+        let rows: any[][] = [];
 
-    if (activeTab === 'profit-loss') {
-      rows = [
-        ['PENDAPATAN', ''],
-        ...groupItemsByAccount(incomeItems).map(([name, val]) => [name, formatCurrency(Math.abs(val))]),
-        ['BEBAN', ''],
-        ...groupItemsByAccount(expenseItems).map(([name, val]) => [name, formatCurrency(val)]),
-        ['TOTAL ' + (profitLoss >= 0 ? 'LABA' : 'RUGI'), formatCurrency(Math.abs(profitLoss))]
-      ];
-    } else {
-      rows = [
-        ['ASET', '', ''],
-        ...groupItemsByAccount(asetItems).map(([name, val]) => [name, 'Aset', formatCurrency(val)]),
-        ['KEWAJIBAN', '', ''],
-        ...groupItemsByAccount(kewajibanItems).map(([name, val]) => [name, 'Kewajiban', formatCurrency(Math.abs(val))]),
-        ['MODAL', '', ''],
-        ...groupItemsByAccount(modalItems).map(([name, val]) => [name, 'Modal', formatCurrency(Math.abs(val))]),
-        ['LABA BERJALAN', 'Ekuitas', formatCurrency(profitLoss)]
-      ];
-    }
+        if (activeTab === 'profit-loss') {
+          rows = [
+            ['PENDAPATAN', ''],
+            ...groupItemsByAccount(incomeItems).map(([name, val]) => [name, formatCurrency(Math.abs(val))]),
+            ['BEBAN', ''],
+            ...groupItemsByAccount(expenseItems).map(([name, val]) => [name, formatCurrency(val)]),
+            ['TOTAL ' + (profitLoss >= 0 ? 'LABA' : 'RUGI'), formatCurrency(Math.abs(profitLoss))]
+          ];
+        } else {
+          rows = [
+            ['ASET (AKTIVA)', '', ''],
+            ...groupItemsByAccount(asetItems).map(([name, val]) => [name, 'Aset', formatCurrency(val)]),
+            ['KEWAJIBAN (PASSIVA)', '', ''],
+            ...groupItemsByAccount(kewajibanItems).map(([name, val]) => [name, 'Kewajiban', formatCurrency(Math.abs(val))]),
+            ['MODAL (PASSIVA)', '', ''],
+            ...groupItemsByAccount(modalItems).map(([name, val]) => [name, 'Modal', formatCurrency(Math.abs(val))]),
+            ['LABA PERIODE BERJALAN', 'Ekuitas', formatCurrency(profitLoss)]
+          ];
+        }
 
-    try {
-      const doc = generateA4Report({ title, subtitle, filename: title, columns, rows });
-      downloadPDF(doc, title);
-      notify('Laporan berhasil diunduh', 'success');
-    } catch (err) {
-      notify('Gagal cetak PDF', 'error');
-    }
+        const doc = generateA4Report({ title, subtitle, filename: title, columns, rows });
+        downloadPDF(doc, title);
+        
+        removeNotify(loadingId);
+        notify('Laporan berhasil diunduh', 'success');
+      } catch (err) {
+        removeNotify(loadingId);
+        notify('Gagal cetak PDF', 'error');
+      }
+    }, 500); // Delay kecil agar loading terlihat halus
   };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-6 md:pb-6 pb-24 max-w-5xl mx-auto w-full">
-        <header className="mb-8 flex justify-between items-center">
+        <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800">
+            <h1 className="text-2xl font-black text-slate-900 tracking-tight">
               {activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca'}
             </h1>
-            <p className="text-slate-500 text-sm">
+            <p className="text-slate-500 text-sm font-medium">
               {activeTab === 'profit-loss' ? 'Ringkasan pendapatan dan beban operasional' : 'Posisi keuangan: Aset, Kewajiban, dan Ekuitas'}
             </p>
           </div>
-          <button onClick={handleExportPDF} className="bg-[#6200EE] text-white px-4 py-2 rounded-xl text-sm font-semibold flex items-center gap-2">
-            <FileDown size={18} /> Cetak PDF
+          <button 
+            onClick={handleExportPDF} 
+            className="bg-[#6200EE] hover:bg-[#5000C7] text-white px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 transition-all shadow-xl shadow-purple-200 active:scale-95"
+          >
+            <FileDown size={18} /> Cetak Laporan
           </button>
         </header>
 
         {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#6200EE]" size={32} /></div> : (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="bg-white rounded-3xl border border-slate-200 p-8 shadow-sm">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2.5rem] border border-slate-200 p-8 md:p-12 shadow-sm">
             {activeTab === 'profit-loss' ? (
-              <div className="space-y-8">
+              <div className="space-y-10">
                 <section>
-                  <h3 className="font-bold text-emerald-600 border-b pb-2 mb-4">Pendapatan</h3>
-                  {groupItemsByAccount(incomeItems).map(([name, val]) => (
-                    <div key={name} className="flex justify-between py-2 border-b border-slate-50 text-sm">
-                      <span>{name}</span>
-                      <span className="font-bold">{formatCurrency(Math.abs(val))}</span>
-                    </div>
-                  ))}
+                  <h3 className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em] border-b border-emerald-50 pb-3 mb-6">Pendapatan Operasional</h3>
+                  <div className="space-y-4">
+                    {groupItemsByAccount(incomeItems).map(([name, val]) => (
+                      <div key={name} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
+                        <span className="font-bold text-slate-700">{name}</span>
+                        <span className="font-black text-slate-900">{formatCurrency(Math.abs(val))}</span>
+                      </div>
+                    ))}
+                  </div>
                 </section>
                 <section>
-                  <h3 className="font-bold text-rose-600 border-b pb-2 mb-4">Beban</h3>
-                  {groupItemsByAccount(expenseItems).map(([name, val]) => (
-                    <div key={name} className="flex justify-between py-2 border-b border-slate-50 text-sm">
-                      <span>{name}</span>
-                      <span className="font-bold">{formatCurrency(val)}</span>
-                    </div>
-                  ))}
+                  <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] border-b border-rose-50 pb-3 mb-6">Beban Operasional</h3>
+                  <div className="space-y-4">
+                    {groupItemsByAccount(expenseItems).map(([name, val]) => (
+                      <div key={name} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
+                        <span className="font-bold text-slate-700">{name}</span>
+                        <span className="font-black text-slate-900">{formatCurrency(val)}</span>
+                      </div>
+                    ))}
+                  </div>
                 </section>
-                <div className={`p-6 rounded-2xl flex justify-between items-center ${profitLoss >= 0 ? 'bg-emerald-50 text-emerald-800' : 'bg-rose-50 text-rose-800'}`}>
-                  <span className="font-bold text-lg">{profitLoss >= 0 ? 'Laba Bersih' : 'Rugi Bersih'}</span>
-                  <span className="font-bold text-2xl">{formatCurrency(Math.abs(profitLoss))}</span>
+                <div className={`p-8 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 ${profitLoss >= 0 ? 'bg-emerald-50/50 text-emerald-900 border border-emerald-100' : 'bg-rose-50/50 text-rose-900 border border-rose-100'}`}>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest mb-1 opacity-60">{profitLoss >= 0 ? 'Total Laba Bersih' : 'Total Rugi Bersih'}</p>
+                    <span className="font-black text-3xl tracking-tight leading-none">{formatCurrency(Math.abs(profitLoss))}</span>
+                  </div>
+                  <div className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${profitLoss >= 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                    {profitLoss >= 0 ? 'Surplus Finansial' : 'Defisit Finansial'}
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <section>
-                  <h3 className="font-bold text-blue-600 border-b pb-2 mb-4">Aset (Aktiva)</h3>
-                  {groupItemsByAccount(asetItems).map(([name, val]) => (
-                    <div key={name} className="flex justify-between py-2 border-b border-slate-50 text-sm">
-                      <span>{name}</span>
-                      <span className="font-bold">{formatCurrency(val)}</span>
-                    </div>
-                  ))}
-                  <div className="mt-4 p-4 bg-slate-50 rounded-xl flex justify-between font-bold">
-                    <span>Total Aset</span>
-                    <span>{formatCurrency(balanceSheet.aset)}</span>
+                  <h3 className="text-[10px] font-black text-blue-600 uppercase tracking-[0.2em] border-b border-blue-50 pb-3 mb-6">Aset (Aktiva)</h3>
+                  <div className="space-y-4">
+                    {groupItemsByAccount(asetItems).map(([name, val]) => (
+                      <div key={name} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
+                        <span className="font-bold text-slate-700">{name}</span>
+                        <span className="font-black text-slate-900">{formatCurrency(val)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 p-6 bg-slate-900 rounded-[1.5rem] flex justify-between items-center text-white">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Aset</span>
+                    <span className="text-xl font-black">{formatCurrency(balanceSheet.aset)}</span>
                   </div>
                 </section>
-                <section className="space-y-8">
+                <section className="space-y-12">
                   <div>
-                    <h3 className="font-bold text-rose-600 border-b pb-2 mb-4">Kewajiban & Modal (Pasiva)</h3>
-                    <div className="space-y-1 mb-6">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Kewajiban</p>
+                    <h3 className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em] border-b border-rose-50 pb-3 mb-6">Kewajiban & Modal (Pasiva)</h3>
+                    <div className="space-y-2 mb-8">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Kewajiban</p>
                       {groupItemsByAccount(kewajibanItems).map(([name, val]) => (
-                        <div key={name} className="flex justify-between py-2 border-b border-slate-50 text-sm">
-                          <span>{name}</span>
-                          <span className="font-bold">{formatCurrency(Math.abs(val))}</span>
+                        <div key={name} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
+                          <span className="font-bold text-slate-700">{name}</span>
+                          <span className="font-black text-slate-900">{formatCurrency(Math.abs(val))}</span>
                         </div>
                       ))}
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-bold text-slate-400 uppercase">Modal</p>
+                    <div className="space-y-2">
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Modal & Ekuitas</p>
                       {groupItemsByAccount(modalItems).map(([name, val]) => (
-                        <div key={name} className="flex justify-between py-2 border-b border-slate-50 text-sm">
-                          <span>{name}</span>
-                          <span className="font-bold">{formatCurrency(Math.abs(val))}</span>
+                        <div key={name} className="flex justify-between items-center py-2 border-b border-slate-50 text-sm">
+                          <span className="font-bold text-slate-700">{name}</span>
+                          <span className="font-black text-slate-900">{formatCurrency(Math.abs(val))}</span>
                         </div>
                       ))}
-                      <div className="flex justify-between py-2 italic text-slate-500 text-sm">
-                        <span>Laba Berjalan</span>
-                        <span>{formatCurrency(profitLoss)}</span>
+                      <div className="flex justify-between items-center py-3 px-1 italic bg-amber-50/50 rounded-xl border border-amber-100/50 mt-4">
+                        <span className="text-xs font-bold text-amber-800">Laba Periode Berjalan</span>
+                        <span className="font-black text-amber-900">{formatCurrency(profitLoss)}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="p-4 bg-slate-50 rounded-xl flex justify-between font-bold">
-                    <span>Total Pasiva</span>
-                    <span>{formatCurrency(balanceSheet.kewajiban + balanceSheet.modal + profitLoss)}</span>
+                  <div className="p-6 bg-[#6200EE] rounded-[1.5rem] flex justify-between items-center text-white shadow-xl shadow-purple-100">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Total Pasiva</span>
+                    <span className="text-xl font-black">{formatCurrency(balanceSheet.kewajiban + balanceSheet.modal + profitLoss)}</span>
                   </div>
                 </section>
               </div>

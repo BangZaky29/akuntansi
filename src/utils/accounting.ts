@@ -50,36 +50,55 @@ export function getDashboardStats(items: JournalItem[]): DashboardStats {
   const profitLoss = calculateProfitLoss(items);
   const { aset, kewajiban, modal } = calculateBalanceSheet(items);
   
-  // Deteksi Kas: Akun aset dengan kata 'kas' atau 'bank'
   const kasItems = items.filter(i => 
     i.account?.type === 'aset' && 
     (i.account?.name.toLowerCase().includes('kas') || i.account?.name.toLowerCase().includes('bank'))
   );
   
-  // Deteksi Piutang: Akun aset dengan kata 'piutang'
   const piutangItems = items.filter(i => 
     i.account?.type === 'aset' && i.account?.name.toLowerCase().includes('piutang')
   );
   
-  // Deteksi Hutang: Semua akun kewajiban
   const hutangItems = items.filter(i => i.account?.type === 'kewajiban');
 
   return {
     kas: calculateAccountBalance(kasItems),
     piutang: calculateAccountBalance(piutangItems),
-    hutang: calculateAccountBalance(hutangItems) * -1, // Hutang ditampilkan positif
+    hutang: calculateAccountBalance(hutangItems) * -1,
     modal: Math.abs(modal),
     laba: profitLoss
   };
 }
 
-export function formatCurrency(value: number): string {
+/**
+ * Format mata uang dinamis berdasarkan kode (IDR/USD)
+ */
+export function formatCurrency(value: number, currencyCode: string = 'IDR'): string {
   const amount = value || 0;
-  return new Intl.NumberFormat('id-ID', {
+  const locale = currencyCode === 'IDR' ? 'id-ID' : 'en-US';
+  
+  return new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: 'IDR',
-    minimumFractionDigits: 0
+    currency: currencyCode,
+    minimumFractionDigits: currencyCode === 'IDR' ? 0 : 2
   }).format(amount);
+}
+
+/**
+ * Format tanggal dinamis berdasarkan bahasa dan zona waktu
+ */
+export function formatDate(dateStr: string, language: string = 'id', timezone: string = 'Asia/Jakarta'): string {
+  if (!dateStr) return '-';
+  const locale = language === 'id' ? 'id-ID' : 'en-US';
+  
+  try {
+    return new Intl.DateTimeFormat(locale, {
+      dateStyle: 'medium',
+      timeZone: timezone
+    }).format(new Date(dateStr));
+  } catch (e) {
+    return new Date(dateStr).toLocaleDateString(locale);
+  }
 }
 
 export function getTrialBalance(items: JournalItem[]) {
