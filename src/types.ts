@@ -1,0 +1,85 @@
+
+export type AccountType = 'aset' | 'kewajiban' | 'modal' | 'pendapatan' | 'beban';
+export type NormalBalance = 'debit' | 'kredit';
+
+export interface UserProfile {
+  id: string;
+  business_name: string;
+  city?: string;
+  fiscal_year: number;
+  currency: string;
+  created_at: string;
+}
+
+export interface Account {
+  id: string;
+  user_id: string;
+  name: string;
+  type: AccountType;
+  normal_balance: NormalBalance;
+  created_at: string;
+}
+
+export interface Contact {
+  id: string;
+  user_id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  type: 'pelanggan' | 'vendor' | 'lainnya';
+  created_at: string;
+}
+
+export interface Journal {
+  id: string;
+  user_id: string;
+  date: string;
+  description: string;
+  source?: string;
+  created_at: string;
+}
+
+export interface JournalItem {
+  id: string;
+  journal_id: string;
+  account_id: string;
+  debit: number;
+  credit: number;
+  account?: Account;
+}
+
+export interface JournalWithItems extends Journal {
+  journal_items: JournalItem[];
+}
+
+export interface Receivable {
+  id: string;
+  user_id: string;
+  amount: number;
+  status: 'unpaid' | 'paid';
+  journal_id: string;
+  created_at: string;
+  journal?: Journal;
+}
+
+export interface Payable {
+  id: string;
+  user_id: string;
+  amount: number;
+  status: 'unpaid' | 'paid';
+  journal_id: string;
+  created_at: string;
+  journal?: Journal;
+}
+
+export interface DashboardStats {
+  kas: number;
+  piutang: number;
+  hutang: number;
+  modal: number;
+  laba: number;
+}
+
+// Dummy constant to ensure ESM loader treats this as a module
+export const VERSION = '1.0.0';
