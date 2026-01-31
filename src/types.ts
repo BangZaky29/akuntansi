@@ -69,6 +69,7 @@ export interface Receivable {
   amount: number;
   status: 'unpaid' | 'paid';
   journal_id: string;
+  due_date?: string;
   created_at: string;
   journal?: Journal;
 }
@@ -79,8 +80,19 @@ export interface Payable {
   amount: number;
   status: 'unpaid' | 'paid';
   journal_id: string;
+  due_date?: string;
   created_at: string;
   journal?: Journal;
+}
+
+export interface CashTransaction {
+  id: string;
+  user_id: string;
+  type: 'in' | 'out';
+  amount: number;
+  journal_id: string;
+  date: string;
+  created_at: string;
 }
 
 export interface DashboardStats {
@@ -91,5 +103,4 @@ export interface DashboardStats {
   laba: number;
 }
 
-// Dummy constant to ensure ESM loader treats this as a module
-export const VERSION = '1.1.0';
+export const VERSION = '1.2.0';

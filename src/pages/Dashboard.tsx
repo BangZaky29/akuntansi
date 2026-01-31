@@ -22,7 +22,7 @@
   import { supabase } from '../lib/supabase';
   import { useSettings } from '../contexts/SettingsContext';
   import type { JournalItem, DashboardStats, JournalWithItems } from '../types';
-  import { getDashboardStats } from '../utils/accounting';
+  import { getDashboardStats, calculateBalanceSheet } from '../utils/accounting';
   import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
   } from 'recharts';
@@ -43,6 +43,7 @@
     const navigate = useNavigate();
     
     const [stats, setStats] = useState<DashboardStats>({ kas: 0, piutang: 0, hutang: 0, modal: 0, laba: 0 });
+    const [isUnbalanced, setIsUnbalanced] = useState(false);
     const [, setRecentJournals] = useState<JournalWithItems[]>([]);
     const [, setTrends] = useState<MonthlyTrend[]>([]);
     const [expenses, setExpenses] = useState<ExpenseCategory[]>([]);
@@ -75,20 +76,24 @@
         const typedItems = (itemsData || []) as unknown as JournalItem[];
         
         const calculatedStats = getDashboardStats(typedItems);
+        const { aset, kewajiban, modal } = calculateBalanceSheet(typedItems);
+        
+        // Peringatan jika Aset != Kewajiban + Modal + Laba
+        // Dalam akuntansi double-entry, aset - (kewajiban + modal) harus 0
+        const balanceDiff = Math.abs(aset - (kewajiban + modal));
+        setIsUnbalanced(balanceDiff > 1);
+
         setStats(calculatedStats);
         setTrends(calculateMonthlyTrends(typedItems));
         setExpenses(getExpenseBreakdown(typedItems));
         
         const finRatios = calculateFinancialRatios(calculatedStats, typedItems);
-        // Map status values to translation keys
         const statusMap: Record<string, string> = {
           'Sehat': t.status_sehat,
           'Waspada': t.status_waspada,
           'Kritis': t.status_kritis
         };
         
-        // Fix: Overwriting the literal status with the translated display string.
-        // This is safe because FinancialRatios.status has been updated to accept string.
         finRatios.status = statusMap[finRatios.status] || finRatios.status;
         setRatios(finRatios);
 
@@ -164,11 +169,18 @@
                 </div>
               </div>
 
-              {Math.abs((stats.kas + stats.piutang) - (stats.hutang + stats.modal + stats.laba)) > 100 && (
-                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3">
-                  <AlertTriangle className="text-amber-600" size={20} />
-                  <p className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">{t.dash_warning_balance}</p>
-                </div>
+              {isUnbalanced && (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="bg-rose-50 border border-rose-200 p-5 rounded-3xl flex items-center gap-4 shadow-sm">
+                  <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <AlertTriangle size={24} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-rose-900 uppercase tracking-widest mb-1">{t.dash_warning_balance}</h4>
+                    <p className="text-[10px] text-rose-700 font-bold leading-tight">
+                      Ditemukan ketidaksamaan antara Total Aset dan Pasiva. Periksa Jurnal Umum atau input Saldo Awal Anda kembali.
+                    </p>
+                  </div>
+                </motion.div>
               )}
 
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

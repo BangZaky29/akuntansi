@@ -3,7 +3,6 @@ import type { JournalItem, DashboardStats} from '../types';
 
 export function calculateAccountBalance(items: JournalItem[]) {
   return items.reduce((total, item) => {
-    // Menghitung selisih bersih debit - kredit
     return total + (Number(item.debit) || 0) - (Number(item.credit) || 0);
   }, 0);
 }
@@ -14,11 +13,9 @@ export function calculateProfitLoss(items: JournalItem[]) {
 
   items.forEach(item => {
     if (item.account?.type === 'pendapatan') {
-      // Pendapatan bertambah di Kredit (Normal)
       income += (Number(item.credit) || 0) - (Number(item.debit) || 0);
     }
     if (item.account?.type === 'beban') {
-      // Beban bertambah di Debit (Normal)
       expense += (Number(item.debit) || 0) - (Number(item.credit) || 0);
     }
   });
@@ -40,11 +37,9 @@ export function calculateBalanceSheet(items: JournalItem[]) {
         aset += (debit - credit);
         break;
       case 'kewajiban':
-        // Kewajiban bertambah di Kredit
         kewajiban += (credit - debit);
         break;
       case 'modal':
-        // Modal bertambah di Kredit
         modal += (credit - debit);
         break;
     }
@@ -53,17 +48,19 @@ export function calculateBalanceSheet(items: JournalItem[]) {
   return { aset, kewajiban, modal };
 }
 
-// Add getTrialBalance function to calculate debit and credit columns for Trial Balance report
 export function getTrialBalance(items: JournalItem[]) {
-  const accountMap: Record<string, { name: string; balance: number }> = {};
+  const accountMap: Record<string, { name: string; balance: number; type: string }> = {};
 
   items.forEach(item => {
     if (!item.account) return;
     const id = item.account_id;
     if (!accountMap[id]) {
-      accountMap[id] = { name: item.account.name, balance: 0 };
+      accountMap[id] = { name: item.account.name, balance: 0, type: item.account.type };
     }
-    accountMap[id].balance += (Number(item.debit) || 0) - (Number(item.credit) || 0);
+    const isDebitNormal = item.account.type === 'aset' || item.account.type === 'beban';
+    accountMap[id].balance += isDebitNormal 
+      ? (Number(item.debit) - Number(item.credit))
+      : (Number(item.credit) - Number(item.debit));
   });
 
   return Object.values(accountMap).map(acc => ({
@@ -75,56 +72,27 @@ export function getTrialBalance(items: JournalItem[]) {
 
 export function getDashboardStats(items: JournalItem[]): DashboardStats {
   const profitLoss = calculateProfitLoss(items);
-  const { aset, modal } = calculateBalanceSheet(items);
+  const { aset, kewajiban, modal } = calculateBalanceSheet(items);
   
-  // Keywords untuk Kas & Bank
-  const kasKeywords = ['kas', 'bank', 'dana', 'e-wallet', 'dompet', 'cash', 'ovo', 'gopay'];
+  // Keyword Kas/Bank yang lebih luas
+  const kasKeywords = ['kas', 'bank', 'cash', 'dana', 'e-wallet', 'ovo', 'gopay', 'mandiri', 'bca', 'bni', 'kantor'];
   const kasItems = items.filter(i => 
     i.account?.type === 'aset' && 
-    (kasKeywords.some(key => i.account?.name.toLowerCase().includes(key)) || (i as any).journal?.source === 'Income')
+    kasKeywords.some(key => i.account?.name.toLowerCase().includes(key))
   );
   
-  // Keywords untuk Piutang
-  const piutangKeywords = ['piutang', 'tagihan', 'receivable', 'invoice', 'wbsite']; // Tambah 'wbsite' karena muncul di gambar user
+  // Keyword Piutang yang lebih luas
+  const piutangKeywords = ['piutang', 'receivable', 'tagihan', 'invoice'];
   const piutangItems = items.filter(i => 
     i.account?.type === 'aset' && 
-    (
-      piutangKeywords.some(key => i.account?.name.toLowerCase().includes(key)) || 
-      (i as any).journal?.source === 'Receivable' ||
-      // Fallback: Jika ini aset tapi bukan kas, anggap piutang/aset lain
-      !kasKeywords.some(key => i.account?.name.toLowerCase().includes(key))
-    )
+    piutangKeywords.some(key => i.account?.name.toLowerCase().includes(key))
   );
-  
-  // Keywords untuk Hutang
-  const hutangKeywords = ['hutang', 'payable', 'kewajiban', 'pinjaman'];
-  const hutangItems = items.filter(i => 
-    i.account?.type === 'kewajiban' || 
-    (hutangKeywords.some(key => i.account?.name.toLowerCase().includes(key)) || (i as any).journal?.source === 'Payable')
-  );
-
-  let finalKas = calculateAccountBalance(kasItems);
-  let finalPiutang = calculateAccountBalance(piutangItems);
-  
-  // Jika Piutang terhitung 0 padahal ada Aset yang bukan Kas, ambil selisihnya
-  if (finalPiutang === 0 && aset > finalKas) {
-    finalPiutang = aset - finalKas;
-  }
-
-  // Hutang dihitung dari sisi kewajiban
-  let finalHutang = hutangItems.reduce(
-    (s, i) => s + (Number(i.credit) || 0) - (Number(i.debit) || 0),
-    0
-  );
-
-  finalHutang = Math.abs(finalHutang);
-
 
   return {
-    kas: finalKas,
-    piutang: finalPiutang,
-    hutang: finalHutang,
-    modal: modal,
+    kas: calculateAccountBalance(kasItems),
+    piutang: calculateAccountBalance(piutangItems),
+    hutang: Math.abs(kewajiban),
+    modal: Math.abs(modal),
     laba: profitLoss
   };
 }

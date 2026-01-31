@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, CheckCircle, Clock, Search, Plus, Trash2, Edit3, ChevronDown } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, Search, Plus, Trash2, Edit3, Calendar } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
 import type { Payable, Account } from '../../types';
 import { useNotify } from '../../contexts/NotificationContext';
@@ -28,14 +28,15 @@ export default function Payables() {
     amount: '', 
     description: '', 
     date: new Date().toISOString().split('T')[0], 
+    due_date: '',
     status: 'unpaid' as 'unpaid' | 'paid',
-    payableAccountId: '', // Akun Kewajiban (Hutang)
-    targetAccountId: ''   // Akun Beban/Aset yang dibeli
+    payableAccountId: '',
+    targetAccountId: ''
   });
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user) fetchData();
+  }, [user]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -51,7 +52,6 @@ export default function Payables() {
       const allAccs = accRes.data || [];
       setAccounts(allAccs);
 
-      // Default selection: Cari akun kewajiban dan beban secara pintar untuk saran awal
       const defPay = allAccs.find(a => a.type === 'kewajiban' && a.name.toLowerCase().includes('hutang'))?.id || '';
       const defTarget = allAccs.find(a => a.type === 'beban')?.id || '';
       
@@ -78,31 +78,26 @@ export default function Payables() {
       const amount = Number(formData.amount);
 
       if (isEditing) {
-        // Update Jurnal & Jurnal Items
         await supabase.from('journals').update({ description: formData.description, date: formData.date }).eq('id', formData.journal_id);
-        await supabase.from('payables').update({ amount, status: formData.status }).eq('id', formData.id);
+        await supabase.from('payables').update({ amount, status: formData.status, due_date: formData.due_date || null }).eq('id', formData.id);
         await supabase.from('journal_items').delete().eq('journal_id', formData.journal_id);
         
-        // Aturan Akuntansi: Beban bertambah di Debit, Hutang bertambah di Kredit
         await supabase.from('journal_items').insert([
           { journal_id: formData.journal_id, account_id: formData.targetAccountId, debit: amount, credit: 0 },
           { journal_id: formData.journal_id, account_id: formData.payableAccountId, debit: 0, credit: amount }
         ]);
         notify('Data hutang diperbarui', 'success');
       } else {
-        // Buat Jurnal Baru
         const { data: journal, error: jErr } = await supabase.from('journals').insert([{
           user_id: user.id, date: formData.date, description: formData.description, source: 'Payable'
         }]).select().single();
 
         if (jErr) throw jErr;
 
-        // Catat ke tabel payables
         await supabase.from('payables').insert([{
-          user_id: user.id, amount, status: formData.status, journal_id: journal.id
+          user_id: user.id, amount, status: formData.status, journal_id: journal.id, due_date: formData.due_date || null
         }]);
 
-        // Catat ke Jurnal Items (Double Entry)
         await supabase.from('journal_items').insert([
           { journal_id: journal.id, account_id: formData.targetAccountId, debit: amount, credit: 0 },
           { journal_id: journal.id, account_id: formData.payableAccountId, debit: 0, credit: amount }
@@ -120,7 +115,7 @@ export default function Payables() {
   };
 
   const handleDelete = async (p: Payable) => {
-    if (!confirm('Hapus hutang dan jurnal terkait?')) return;
+    if (!confirm('Hapus hutang ini?')) return;
     try {
       if (p.journal_id) {
         await supabase.from('journal_items').delete().eq('journal_id', p.journal_id);
@@ -131,7 +126,7 @@ export default function Payables() {
       }
       notify('Data terhapus', 'info');
       fetchData();
-    } catch (err) { notify('Gagal menghapus data', 'error'); }
+    } catch (err) { notify('Gagal hapus', 'error'); }
   };
 
   const liabilityAccounts = accounts.filter(a => a.type === 'kewajiban');
@@ -144,7 +139,7 @@ export default function Payables() {
         <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Daftar Hutang</h1>
-            <p className="text-slate-500 text-sm font-medium">Kewajiban pembayaran operasional atau aset</p>
+            <p className="text-slate-500 text-sm font-medium">Kewajiban pembayaran kepada vendor atau bank</p>
           </div>
           <div className="flex gap-2">
             <div className="relative flex-1 md:w-64">
@@ -156,10 +151,7 @@ export default function Payables() {
               />
             </div>
             <button 
-              onClick={() => {
-                setIsEditing(false);
-                setShowModal(true);
-              }}
+              onClick={() => { setIsEditing(false); setShowModal(true); }}
               className="bg-rose-600 text-white px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-rose-100 active:scale-95 transition-all"
             >
               <Plus size={18} /> Tambah
@@ -183,9 +175,10 @@ export default function Payables() {
                         amount: p.amount.toString(), 
                         description: p.journal?.description || '', 
                         date: p.journal?.date || '', 
+                        due_date: p.due_date || '',
                         status: p.status,
-                        payableAccountId: formData.payableAccountId,
-                        targetAccountId: formData.targetAccountId
+                        payableAccountId: accounts.find(a => a.type === 'kewajiban' && a.name.toLowerCase().includes('hutang'))?.id || '',
+                        targetAccountId: accounts.find(a => a.type === 'beban')?.id || ''
                       }); 
                       setIsEditing(true); 
                       setShowModal(true); 
@@ -194,13 +187,23 @@ export default function Payables() {
                   </div>
                 </div>
                 <h3 className="font-black text-slate-800 mb-1 truncate leading-tight">{p.journal?.description || 'Hutang'}</h3>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-6">
-                  {new Date(p.journal?.date || '').toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </p>
+                <div className="flex items-center gap-2 mb-6">
+                  <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
+                    Tgl: {new Date(p.journal?.date || '').toLocaleDateString('id-ID')}
+                  </p>
+                  {p.due_date && (
+                    <>
+                      <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
+                      <p className="text-[9px] text-rose-500 font-black uppercase tracking-widest flex items-center gap-1">
+                        <Calendar size={10} /> Jatuh Tempo: {new Date(p.due_date).toLocaleDateString('id-ID')}
+                      </p>
+                    </>
+                  )}
+                </div>
                 <div className="pt-4 border-t border-slate-50 flex justify-between items-center">
                   <span className="text-xl font-black text-slate-900 tracking-tighter">{formatCurrency(p.amount)}</span>
                   <span className={`text-[9px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${p.status === 'paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
-                    {p.status === 'paid' ? 'LUNAS' : 'MENUNGGU'}
+                    {p.status === 'paid' ? 'LUNAS' : 'BELUM LUNAS'}
                   </span>
                 </div>
               </motion.div>
@@ -213,61 +216,49 @@ export default function Payables() {
             <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowModal(false)} className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" />
               <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl p-8 md:p-10">
-                <h2 className="text-2xl font-black mb-8 text-slate-800 tracking-tight">{isEditing ? 'Ubah Hutang' : 'Catat Hutang Baru'}</h2>
+                <h2 className="text-2xl font-black mb-8 text-slate-800 tracking-tight">{isEditing ? 'Ubah Hutang' : 'Catat Hutang'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Keterangan Transaksi</label>
-                    <input type="text" placeholder="Misal: Pembelian Laptop Kantor" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold focus:border-rose-600/20 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Pemberi Hutang / Keterangan</label>
+                    <input type="text" placeholder="Misal: Hutang Pembelian Laptop PT. XYZ" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold focus:border-rose-600/20 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tanggal</label>
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tanggal Jurnal</label>
                       <input type="date" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Status</label>
-                      <div className="relative">
-                        <select className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as any})}>
-                          <option value="unpaid">Belum Lunas</option>
-                          <option value="paid">Sudah Lunas</option>
-                        </select>
-                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4 pt-2 border-t border-slate-50">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest flex items-center gap-2">Akun Hutang <span className="text-[8px] bg-rose-50 text-rose-500 px-1.5 py-0.5 rounded italic">Kredit</span></label>
-                      <div className="relative">
-                        <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer" value={formData.payableAccountId} onChange={e => setFormData({...formData, payableAccountId: e.target.value})}>
-                          <option value="">Pilih Akun Hutang (Kewajiban)</option>
-                          {liabilityAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-                        </select>
-                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest flex items-center gap-2">Tujuan Biaya / Aset <span className="text-[8px] bg-emerald-50 text-emerald-500 px-1.5 py-0.5 rounded italic">Debit</span></label>
-                      <div className="relative">
-                        <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer" value={formData.targetAccountId} onChange={e => setFormData({...formData, targetAccountId: e.target.value})}>
-                          <option value="">Pilih Akun Beban atau Aset</option>
-                          {targetAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
-                        </select>
-                        <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-                      </div>
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tgl Jatuh Tempo</label>
+                      <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Nominal Hutang (Rp)</label>
-                    <input type="number" placeholder="0" required className="w-full bg-slate-50 p-5 rounded-3xl outline-none border border-slate-100 font-black text-2xl text-rose-600" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Akun Hutang (Kredit)</label>
+                    <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.payableAccountId} onChange={e => setFormData({...formData, payableAccountId: e.target.value})}>
+                      <option value="">Pilih Akun Hutang</option>
+                      {liabilityAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Akun Beban/Aset (Debit)</label>
+                      <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.targetAccountId} onChange={e => setFormData({...formData, targetAccountId: e.target.value})}>
+                        <option value="">Pilih Tujuan Biaya</option>
+                        {targetAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Jumlah Hutang (Rp)</label>
+                      <input type="number" placeholder="0" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-black text-lg text-rose-600" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                    </div>
                   </div>
 
                   <button type="submit" disabled={submitting} className="w-full bg-rose-600 text-white py-5 rounded-3xl font-black text-xs uppercase tracking-[0.2em] shadow-2xl shadow-rose-100 mt-4 transition-all active:scale-95 disabled:opacity-50">
-                    {submitting ? <Loader2 className="animate-spin mx-auto" size={20} /> : (isEditing ? 'PERBARUI HUTANG' : 'SIMPAN HUTANG')}
+                    {submitting ? <Loader2 className="animate-spin mx-auto" size={20} /> : (isEditing ? 'UPDATE DATA' : 'SIMPAN HUTANG')}
                   </button>
                 </form>
               </motion.div>

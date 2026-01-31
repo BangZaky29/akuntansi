@@ -60,7 +60,7 @@ export default function Register() {
             business_name: businessName,
             fiscal_year: new Date().getFullYear(),
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`
+          emailRedirectTo: `${window.location.origin}${import.meta.env.BASE_URL}auth/callback`
         }
       });
 
@@ -187,7 +187,7 @@ export default function Register() {
 
             <div className="mt-8 text-center border-t border-slate-50 pt-6">
               <p className="text-slate-400 text-[11px] font-bold uppercase tracking-widest">
-                Sudah punya akun? <Link to="/login" className="text-[#6200EE] ml-1 hover:underline">Masuk</Link>
+                Sudah punya akun? <Link to="login" className="text-[#6200EE] ml-1 hover:underline">Masuk</Link>
               </p>
             </div>
           </motion.div>
@@ -196,7 +196,7 @@ export default function Register() {
             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner"><CheckCircle2 size={48} /></div>
             <h1 className="text-2xl font-black text-slate-900 mb-4 tracking-tight">Cek Email Anda</h1>
             <p className="text-slate-500 mb-8 font-medium text-sm leading-relaxed">Link verifikasi telah dikirim ke <br/><span className="font-black text-[#6200EE]">{email}</span>.<br/> Silakan verifikasi sebelum login.</p>
-            <Link to="/login" className="w-full bg-[#6200EE] text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-95 uppercase tracking-widest text-xs shadow-xl shadow-purple-100">
+            <Link to="login" className="w-full bg-[#6200EE] text-white font-black py-5 rounded-2xl flex items-center justify-center gap-3 active:scale-95 uppercase tracking-widest text-xs shadow-xl shadow-purple-100">
               Sudah Verifikasi? Masuk <ArrowRight size={20} />
             </Link>
           </motion.div>
