@@ -11,22 +11,21 @@ import {
   CreditCard, 
   TrendingUp,
   Plus,
-  FileDown,
   Loader2,
   CalendarDays,
   Activity,
   ShieldCheck,
-  TrendingDown
+  TrendingDown,
+  RefreshCw,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useSettings } from '../contexts/SettingsContext';
 import type { JournalItem, DashboardStats, JournalWithItems } from '../types';
-import { getDashboardStats, formatCurrency } from '../utils/accounting';
+import { getDashboardStats } from '../utils/accounting';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-  AreaChart, Area
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import { exportChartToPDF } from '../utils/handlerPDF';
 import { 
   calculateMonthlyTrends, 
   getExpenseBreakdown, 
@@ -40,7 +39,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { notify } = useNotify();
-  const { currency } = useSettings();
+  const { currency, fmtCurrency } = useSettings();
   const navigate = useNavigate();
   
   const [stats, setStats] = useState<DashboardStats>({ kas: 0, piutang: 0, hutang: 0, modal: 0, laba: 0 });
@@ -50,33 +49,36 @@ export default function Dashboard() {
   const [ratios, setRatios] = useState<FinancialRatios | null>(null);
   
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [chartReady, setChartReady] = useState(false);
   const [activeChart, setActiveChart] = useState<'balance' | 'trend'>('balance');
 
   useEffect(() => {
     fetchData();
-    const timer = setTimeout(() => setChartReady(true), 1000);
+    const timer = setTimeout(() => setChartReady(true), 1200);
     return () => clearTimeout(timer);
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
+    setRefreshing(true);
     try {
       const { data: itemsData, error: itemsError } = await supabase
         .from('journal_items')
-        .select(`*, account:accounts(*), journal:journals(*)`);
+        .select(`
+          *,
+          account:accounts(*),
+          journal:journals(*)
+        `);
 
       if (itemsError) throw itemsError;
 
-      const typedItems = itemsData as unknown as JournalItem[];
+      const typedItems = (itemsData || []) as unknown as JournalItem[];
       
-      if (typedItems) {
-        const calculatedStats = getDashboardStats(typedItems);
-        setStats(calculatedStats);
-        setTrends(calculateMonthlyTrends(typedItems));
-        setExpenses(getExpenseBreakdown(typedItems));
-        setRatios(calculateFinancialRatios(calculatedStats, typedItems));
-      }
+      const calculatedStats = getDashboardStats(typedItems);
+      setStats(calculatedStats);
+      setTrends(calculateMonthlyTrends(typedItems));
+      setExpenses(getExpenseBreakdown(typedItems));
+      setRatios(calculateFinancialRatios(calculatedStats, typedItems));
 
       const { data: journalsData } = await supabase
         .from('journals')
@@ -86,9 +88,10 @@ export default function Dashboard() {
 
       setRecentJournals(journalsData as unknown as JournalWithItems[] || []);
     } catch (err: any) {
-      notify('Gagal memuat analitik', 'error');
+      notify('Gagal memuat data: ' + err.message, 'error');
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -99,8 +102,7 @@ export default function Dashboard() {
     { name: 'Laba', value: stats.laba, color: '#f59e0b' },
   ];
 
-  const hasChartData = chartData.some(d => d.value !== 0);
-  const hasTrendData = trends.length > 0;
+  const hasChartData = chartData.some(d => Math.abs(d.value) > 0);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -120,10 +122,11 @@ export default function Dashboard() {
           </div>
           <div className="flex gap-2">
             <button 
-              onClick={() => exportChartToPDF(stats, 'Analisis Performa Bisnis')}
-              className="hidden md:flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all"
+              onClick={fetchData}
+              disabled={refreshing}
+              className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[#6200EE] transition-all disabled:opacity-50"
             >
-              <FileDown size={16} /> PDF
+              <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
             </button>
             <button onClick={() => navigate('/journal-entry')} className="bg-[#6200EE] hover:bg-[#5000C7] text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-purple-100">
               <Plus size={18} />
@@ -132,103 +135,120 @@ export default function Dashboard() {
           </div>
         </header>
 
-        <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto w-full">
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
-            <StatCard title="Kas & Bank" value={stats.kas} icon={Wallet} color="bg-indigo-600" />
-            <StatCard title="Piutang" value={stats.piutang} icon={ArrowUpRight} color="bg-emerald-600" />
-            <StatCard title="Hutang" value={stats.hutang} icon={ArrowDownLeft} color="bg-rose-600" />
-            <StatCard title="Modal" value={stats.modal} icon={CreditCard} color="bg-slate-800" />
-            <div className="col-span-2 lg:col-span-1">
-              <StatCard title="Laba/Rugi" value={stats.laba} icon={TrendingUp} color="bg-amber-600" />
-            </div>
+        {loading ? (
+          <div className="flex-1 flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="animate-spin text-[#6200EE]" size={40} />
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Menghitung Saldo...</p>
           </div>
+        ) : (
+          <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto w-full">
+            <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
+              <StatCard title="Kas & Bank" value={stats.kas} icon={Wallet} color="bg-indigo-600" />
+              <StatCard title="Piutang" value={stats.piutang} icon={ArrowUpRight} color="bg-emerald-600" />
+              <StatCard title="Hutang" value={stats.hutang} icon={ArrowDownLeft} color="bg-rose-600" />
+              <StatCard title="Modal" value={stats.modal} icon={CreditCard} color="bg-slate-800" />
+              <div className="col-span-2 lg:col-span-1">
+                <StatCard title="Laba/Rugi" value={stats.laba} icon={TrendingUp} color="bg-amber-600" />
+              </div>
+            </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[40px] border border-slate-100 shadow-sm">
-              <div className="flex justify-between items-center mb-8">
-                <div>
-                  <h3 className="font-black text-slate-800 text-lg tracking-tight">Performa Akun Utama</h3>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Visualisasi saldo real-time</p>
-                </div>
-                <div className="flex bg-slate-50 p-1 rounded-xl">
-                  <button onClick={() => setActiveChart('balance')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'balance' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>KOMPOSISI</button>
-                  <button onClick={() => setActiveChart('trend')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'trend' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>TREN</button>
-                </div>
+            {Math.abs((stats.kas + stats.piutang) - (stats.hutang + stats.modal + stats.laba)) > 100 && (
+              <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3">
+                <AlertTriangle className="text-amber-600" size={20} />
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">Peringatan: Posisi keuangan tidak seimbang. Periksa input jurnal Anda.</p>
               </div>
-              <div className="w-full h-[320px] relative">
-                {(!chartReady || loading) ? (
-                  <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>
-                ) : (
-                  <div className="w-full h-full">
-                    {activeChart === 'balance' ? (
-                      hasChartData ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 800}} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9}} tickFormatter={(v) => v === 0 ? '0' : (v / 1000000) + 'M'} />
-                            <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '20px', border: 'none'}} formatter={(v: any) => formatCurrency(v, currency)} />
-                            <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={40}>
-                              {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
-                            </Bar>
-                          </BarChart>
-                        </ResponsiveContainer>
-                      ) : <div className="h-full flex items-center justify-center text-slate-300 uppercase text-[10px] font-black">Data belum tersedia</div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[40px] border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-8">
+                  <div>
+                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Performa Akun Utama</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Visualisasi saldo real-time</p>
+                  </div>
+                  <div className="flex bg-slate-50 p-1 rounded-xl">
+                    <button onClick={() => setActiveChart('balance')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'balance' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>KOMPOSISI</button>
+                    <button onClick={() => setActiveChart('trend')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'trend' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>TREN</button>
+                  </div>
+                </div>
+                
+                {/* Fixed height container for ResponsiveContainer */}
+                <div className="w-full h-[320px] min-h-[320px] relative">
+                  {!chartReady ? (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="animate-spin text-blue-500" size={32} />
+                    </div>
+                  ) : activeChart === 'balance' ? (
+                    hasChartData ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 800}} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9}} tickFormatter={(v) => v === 0 ? '0' : (v / 1000) + 'k'} />
+                          <Tooltip 
+                            cursor={{fill: '#f8fafc'}} 
+                            contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)'}} 
+                            formatter={(v: any) => fmtCurrency(v)} 
+                          />
+                          <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={40}>
+                            {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
+                          </Bar>
+                        </BarChart>
+                      </ResponsiveContainer>
                     ) : (
-                      hasTrendData ? (
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={trends} margin={{ top: 10, right: 10, left: 10, bottom: 20 }}>
-                            <defs>
-                              <linearGradient id="colorInc" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.1}/><stop offset="95%" stopColor="#6366f1" stopOpacity={0}/></linearGradient>
-                            </defs>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 800}} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 9}} />
-                            <Tooltip contentStyle={{borderRadius: '20px', border: 'none'}} formatter={(v: any) => formatCurrency(v, currency)} />
-                            <Area type="monotone" dataKey="pendapatan" stroke="#6366f1" fillOpacity={1} fill="url(#colorInc)" strokeWidth={3} />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      ) : <div className="h-full flex items-center justify-center text-slate-300 uppercase text-[10px] font-black">Data belum tersedia</div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-            <div className="space-y-6">
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                <h3 className="font-black text-slate-800 text-base mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-[#6200EE]" /> Kesehatan Finansial</h3>
-                {ratios ? (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">Status Global</span>
-                      <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-white shadow-sm ${ratios.color}`}>{ratios.status}</span>
-                    </div>
-                    <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/30">
-                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Mata Uang Aktif</p>
-                      <p className="text-lg font-black text-indigo-700">{currency}</p>
-                    </div>
-                  </div>
-                ) : <div className="h-24 animate-pulse bg-slate-50 rounded-2xl"></div>}
-              </motion.div>
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex-1">
-                <h3 className="font-black text-slate-800 text-base mb-5 flex items-center gap-2"><TrendingDown size={20} className="text-rose-500" /> Biaya Operasional</h3>
-                <div className="space-y-4">
-                  {expenses.length > 0 ? expenses.map((exp, idx) => (
-                    <div key={idx} className="space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                        <span className="text-slate-500 truncate pr-2">{exp.name}</span>
-                        <span className="text-slate-900">{formatCurrency(exp.value, currency)}</span>
+                      <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                        <Activity size={40} className="opacity-20" />
+                        <p className="uppercase text-[10px] font-black">Data belum tersedia untuk visualisasi</p>
                       </div>
-                      <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
-                        <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, (exp.value / (stats.kas + stats.piutang || 1)) * 100)}%` }} className="h-full rounded-full" style={{ backgroundColor: exp.color }} />
-                      </div>
-                    </div>
-                  )) : <div className="py-8 text-center text-slate-300 text-[10px] font-black uppercase">Belum ada biaya</div>}
+                    )
+                  ) : (
+                    <div className="h-full flex items-center justify-center text-slate-300 uppercase text-[10px] font-black">Fitur Tren segera hadir</div>
+                  )}
                 </div>
               </motion.div>
+              
+              <div className="space-y-6">
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
+                  <h3 className="font-black text-slate-800 text-base mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-[#6200EE]" /> Kesehatan Finansial</h3>
+                  {ratios ? (
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">Status Global</span>
+                        <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-white shadow-sm ${ratios.color}`}>{ratios.status}</span>
+                      </div>
+                      <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/30">
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Aset Bersih</p>
+                        <p className="text-lg font-black text-indigo-700">{fmtCurrency(stats.kas + stats.piutang)}</p>
+                      </div>
+                    </div>
+                  ) : <div className="h-24 animate-pulse bg-slate-50 rounded-2xl"></div>}
+                </motion.div>
+
+                <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex-1">
+                  <h3 className="font-black text-slate-800 text-base mb-5 flex items-center gap-2"><TrendingDown size={20} className="text-rose-500" /> Biaya Operasional</h3>
+                  <div className="space-y-4">
+                    {expenses.length > 0 ? expenses.map((exp, idx) => (
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                          <span className="text-slate-500 truncate pr-2">{exp.name}</span>
+                          <span className="text-slate-900">{fmtCurrency(exp.value)}</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }} 
+                            animate={{ width: `${Math.min(100, (exp.value / (Math.abs(stats.laba) || 1)) * 100)}%` }} 
+                            className="h-full rounded-full" 
+                            style={{ backgroundColor: exp.color }} 
+                          />
+                        </div>
+                      </div>
+                    )) : <div className="py-8 text-center text-slate-300 text-[10px] font-black uppercase">Belum ada biaya</div>}
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
       <MobileNav />
     </div>

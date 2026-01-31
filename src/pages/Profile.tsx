@@ -8,7 +8,7 @@ import MobileNav from '../components/MobileNav';
 import { 
   LogOut, Building, Globe, Save, Loader2, 
   Clock, Bell, Shield, ToggleLeft, ToggleRight,
-  CheckCircle2, Mail, Settings, ChevronDown
+  CheckCircle2, Settings, ChevronDown, MapPin
 } from 'lucide-react';
 import { useNotify } from '../contexts/NotificationContext';
 import type { UserSettings } from '../types';
@@ -169,7 +169,17 @@ export default function Profile() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Nama Bisnis</label>
-                        <input type="text" required className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.business_name} onChange={e => setFormData({...formData, business_name: e.target.value})} />
+                        <div className="relative group">
+                          <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#6200EE] transition-colors" size={18} />
+                          <input type="text" required className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.business_name} onChange={e => setFormData({...formData, business_name: e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Kota / Domisili</label>
+                        <div className="relative group">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#6200EE] transition-colors" size={18} />
+                          <input type="text" className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.city} placeholder="Misal: Bogor" onChange={e => setFormData({...formData, city: e.target.value})} />
+                        </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Mata Uang Laporan</label>
@@ -180,6 +190,10 @@ export default function Profile() {
                           </select>
                           <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tahun Fiskal Aktif</label>
+                        <input type="number" disabled className="w-full bg-slate-100 border border-slate-200 rounded-2xl px-5 py-4 outline-none font-bold text-slate-400 cursor-not-allowed" value={formData.fiscal_year} />
                       </div>
                     </div>
                     <button type="submit" disabled={updating} className="w-full bg-[#6200EE] text-white font-black py-5 rounded-3xl hover:bg-[#5000C7] shadow-xl shadow-purple-100 flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50 uppercase tracking-widest text-xs">
