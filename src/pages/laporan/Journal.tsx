@@ -5,7 +5,7 @@
   import { useSettings } from '../../contexts/SettingsContext';
   import Sidebar from '../../components/Sidebar';
   import MobileNav from '../../components/MobileNav';
-  import { BookOpen, ChevronDown, Loader2, FileText, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
+  import { BookOpen, ChevronDown, Loader2, FileText, RefreshCw } from 'lucide-react';
 
   export default function Journal() {
     const { fmtCurrency, fmtDate } = useSettings();

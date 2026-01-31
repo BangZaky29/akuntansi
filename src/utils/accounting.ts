@@ -75,7 +75,7 @@ export function getTrialBalance(items: JournalItem[]) {
 
 export function getDashboardStats(items: JournalItem[]): DashboardStats {
   const profitLoss = calculateProfitLoss(items);
-  const { aset, kewajiban, modal } = calculateBalanceSheet(items);
+  const { aset, modal } = calculateBalanceSheet(items);
   
   // Keywords untuk Kas & Bank
   const kasKeywords = ['kas', 'bank', 'dana', 'e-wallet', 'dompet', 'cash', 'ovo', 'gopay'];
@@ -112,11 +112,13 @@ export function getDashboardStats(items: JournalItem[]): DashboardStats {
   }
 
   // Hutang dihitung dari sisi kewajiban
-  let finalHutang = items
-    .filter(i => i.account?.type === 'kewajiban')
-    .reduce((s, i) => s + (Number(i.credit) || 0) - (Number(i.debit) || 0), 0);
-  
+  let finalHutang = hutangItems.reduce(
+    (s, i) => s + (Number(i.credit) || 0) - (Number(i.debit) || 0),
+    0
+  );
+
   finalHutang = Math.abs(finalHutang);
+
 
   return {
     kas: finalKas,

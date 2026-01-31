@@ -11,7 +11,6 @@ interface StatCardProps {
 }
 
 export default function StatCard({ title, value, icon: Icon, color }: StatCardProps) {
-  const isPositive = value >= 0;
 
   return (
     <motion.div 
