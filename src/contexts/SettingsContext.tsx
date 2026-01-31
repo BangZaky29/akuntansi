@@ -1,13 +1,15 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from './AuthContext';
 import { formatCurrency, formatDate } from '../utils/accounting';
+import { translations } from '../utils/translations';
 
 interface SettingsContextType {
   currency: string;
   language: string;
   timezone: string;
+  t: typeof translations.id;
   refreshSettings: () => Promise<void>;
   fmtCurrency: (val: number) => string;
   fmtDate: (date: string) => string;
@@ -41,11 +43,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const fmtCurrency = (val: number) => formatCurrency(val, currency);
   const fmtDate = (date: string) => formatDate(date, language, timezone);
 
+  const t = useMemo(() => {
+    return translations[language as 'id' | 'en'] || translations.id;
+  }, [language]);
+
   return (
     <SettingsContext.Provider value={{ 
       currency, 
       language, 
       timezone, 
+      t,
       refreshSettings, 
       fmtCurrency, 
       fmtDate 

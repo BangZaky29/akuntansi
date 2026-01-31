@@ -18,7 +18,8 @@ export interface FinancialRatios {
   liquidity: number; // Current Ratio
   debtToEquity: number;
   netProfitMargin: number;
-  status: 'Sehat' | 'Waspada' | 'Kritis';
+  // Use string to allow for translated status values
+  status: string;
   color: string;
 }
 
@@ -80,7 +81,7 @@ export const calculateFinancialRatios = (stats: DashboardStats, items: JournalIt
   const debtToEquity = stats.modal === 0 ? 0 : stats.hutang / stats.modal;
   const netProfitMargin = totalIncome === 0 ? 0 : (stats.laba / totalIncome) * 100;
 
-  let status: 'Sehat' | 'Waspada' | 'Kritis' = 'Sehat';
+  let status = 'Sehat';
   let color = 'text-emerald-500';
 
   if (liquidity < 1 || debtToEquity > 2) {

@@ -39,7 +39,7 @@ import { useNavigate } from 'react-router-dom';
 
 export default function Dashboard() {
   const { notify } = useNotify();
-  const { currency, fmtCurrency } = useSettings();
+  const { currency, fmtCurrency, t, language } = useSettings();
   const navigate = useNavigate();
   
   const [stats, setStats] = useState<DashboardStats>({ kas: 0, piutang: 0, hutang: 0, modal: 0, laba: 0 });
@@ -78,7 +78,19 @@ export default function Dashboard() {
       setStats(calculatedStats);
       setTrends(calculateMonthlyTrends(typedItems));
       setExpenses(getExpenseBreakdown(typedItems));
-      setRatios(calculateFinancialRatios(calculatedStats, typedItems));
+      
+      const finRatios = calculateFinancialRatios(calculatedStats, typedItems);
+      // Map status values to translation keys
+      const statusMap: Record<string, string> = {
+        'Sehat': t.status_sehat,
+        'Waspada': t.status_waspada,
+        'Kritis': t.status_kritis
+      };
+      
+      // Fix: Overwriting the literal status with the translated display string.
+      // This is safe because FinancialRatios.status has been updated to accept string.
+      finRatios.status = statusMap[finRatios.status] || finRatios.status;
+      setRatios(finRatios);
 
       const { data: journalsData } = await supabase
         .from('journals')
@@ -96,10 +108,10 @@ export default function Dashboard() {
   };
 
   const chartData = [
-    { name: 'Kas', value: stats.kas, color: '#6366f1' },
-    { name: 'Piutang', value: stats.piutang, color: '#10b981' },
-    { name: 'Hutang', value: stats.hutang, color: '#f43f5e' },
-    { name: 'Laba', value: stats.laba, color: '#f59e0b' },
+    { name: t.dash_kas, value: stats.kas, color: '#6366f1' },
+    { name: t.dash_piutang, value: stats.piutang, color: '#10b981' },
+    { name: t.dash_hutang, value: stats.hutang, color: '#f43f5e' },
+    { name: t.dash_laba, value: stats.laba, color: '#f59e0b' },
   ];
 
   const hasChartData = chartData.some(d => Math.abs(d.value) > 0);
@@ -114,9 +126,9 @@ export default function Dashboard() {
                <Activity size={20} />
              </div>
              <div>
-               <h1 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-none mb-1">Analitik {currency}</h1>
+               <h1 className="text-lg md:text-xl font-black text-slate-800 tracking-tight leading-none mb-1">{t.dash_analytic} {currency}</h1>
                <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                 <CalendarDays size={10} /> {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                 <CalendarDays size={10} /> {new Date().toLocaleDateString(language === 'id' ? 'id-ID' : 'en-US', { month: 'long', year: 'numeric' })}
                </p>
              </div>
           </div>
@@ -130,7 +142,7 @@ export default function Dashboard() {
             </button>
             <button onClick={() => navigate('/journal-entry')} className="bg-[#6200EE] hover:bg-[#5000C7] text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-all shadow-lg shadow-purple-100">
               <Plus size={18} />
-              <span className="text-sm font-bold">Jurnal</span>
+              <span className="text-sm font-bold">{t.nav_journal_entry.split(' ')[0]}</span>
             </button>
           </div>
         </header>
@@ -138,24 +150,24 @@ export default function Dashboard() {
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center space-y-4">
             <Loader2 className="animate-spin text-[#6200EE]" size={40} />
-            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Menghitung Saldo...</p>
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.dash_calc_balance}</p>
           </div>
         ) : (
           <div className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto w-full">
             <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 md:gap-5">
-              <StatCard title="Kas & Bank" value={stats.kas} icon={Wallet} color="bg-indigo-600" />
-              <StatCard title="Piutang" value={stats.piutang} icon={ArrowUpRight} color="bg-emerald-600" />
-              <StatCard title="Hutang" value={stats.hutang} icon={ArrowDownLeft} color="bg-rose-600" />
-              <StatCard title="Modal" value={stats.modal} icon={CreditCard} color="bg-slate-800" />
+              <StatCard title={t.dash_kas} value={stats.kas} icon={Wallet} color="bg-indigo-600" />
+              <StatCard title={t.dash_piutang} value={stats.piutang} icon={ArrowUpRight} color="bg-emerald-600" />
+              <StatCard title={t.dash_hutang} value={stats.hutang} icon={ArrowDownLeft} color="bg-rose-600" />
+              <StatCard title={t.dash_modal} value={stats.modal} icon={CreditCard} color="bg-slate-800" />
               <div className="col-span-2 lg:col-span-1">
-                <StatCard title="Laba/Rugi" value={stats.laba} icon={TrendingUp} color="bg-amber-600" />
+                <StatCard title={t.dash_laba} value={stats.laba} icon={TrendingUp} color="bg-amber-600" />
               </div>
             </div>
 
             {Math.abs((stats.kas + stats.piutang) - (stats.hutang + stats.modal + stats.laba)) > 100 && (
               <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-3">
                 <AlertTriangle className="text-amber-600" size={20} />
-                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">Peringatan: Posisi keuangan tidak seimbang. Periksa input jurnal Anda.</p>
+                <p className="text-[10px] font-bold text-amber-800 uppercase tracking-tight">{t.dash_warning_balance}</p>
               </div>
             )}
 
@@ -163,16 +175,15 @@ export default function Dashboard() {
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="lg:col-span-2 bg-white p-6 md:p-8 rounded-[40px] border border-slate-100 shadow-sm">
                 <div className="flex justify-between items-center mb-8">
                   <div>
-                    <h3 className="font-black text-slate-800 text-lg tracking-tight">Performa Akun Utama</h3>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Visualisasi saldo real-time</p>
+                    <h3 className="font-black text-slate-800 text-lg tracking-tight">{t.dash_performance}</h3>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{t.dash_realtime_viz}</p>
                   </div>
                   <div className="flex bg-slate-50 p-1 rounded-xl">
-                    <button onClick={() => setActiveChart('balance')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'balance' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>KOMPOSISI</button>
-                    <button onClick={() => setActiveChart('trend')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'trend' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>TREN</button>
+                    <button onClick={() => setActiveChart('balance')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'balance' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>{t.dash_composition}</button>
+                    <button onClick={() => setActiveChart('trend')} className={`px-3 py-1.5 rounded-lg text-[9px] font-black tracking-widest transition-all ${activeChart === 'trend' ? 'bg-white shadow-sm text-[#6200EE]' : 'text-slate-400'}`}>{t.dash_trend}</button>
                   </div>
                 </div>
                 
-                {/* Fixed height container for ResponsiveContainer */}
                 <div className="w-full h-[320px] min-h-[320px] relative">
                   {!chartReady ? (
                     <div className="absolute inset-0 flex items-center justify-center">
@@ -198,26 +209,26 @@ export default function Dashboard() {
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center text-slate-300 gap-4">
                         <Activity size={40} className="opacity-20" />
-                        <p className="uppercase text-[10px] font-black">Data belum tersedia untuk visualisasi</p>
+                        <p className="uppercase text-[10px] font-black">{t.dash_no_data}</p>
                       </div>
                     )
                   ) : (
-                    <div className="h-full flex items-center justify-center text-slate-300 uppercase text-[10px] font-black">Fitur Tren segera hadir</div>
+                    <div className="h-full flex items-center justify-center text-slate-300 uppercase text-[10px] font-black">{t.dash_trend} feature soon</div>
                   )}
                 </div>
               </motion.div>
               
               <div className="space-y-6">
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm">
-                  <h3 className="font-black text-slate-800 text-base mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-[#6200EE]" /> Kesehatan Finansial</h3>
+                  <h3 className="font-black text-slate-800 text-base mb-4 flex items-center gap-2"><ShieldCheck size={20} className="text-[#6200EE]" /> {t.dash_health}</h3>
                   {ratios ? (
                     <div className="space-y-4">
                       <div className="flex justify-between items-center p-3 bg-slate-50 rounded-2xl">
-                        <span className="text-[10px] font-bold text-slate-500 uppercase">Status Global</span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">{t.dash_status_global}</span>
                         <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-full bg-white shadow-sm ${ratios.color}`}>{ratios.status}</span>
                       </div>
                       <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/30">
-                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Total Aset Bersih</p>
+                        <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">{t.dash_net_asset}</p>
                         <p className="text-lg font-black text-indigo-700">{fmtCurrency(stats.kas + stats.piutang)}</p>
                       </div>
                     </div>
@@ -225,7 +236,7 @@ export default function Dashboard() {
                 </motion.div>
 
                 <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.1 }} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-sm flex-1">
-                  <h3 className="font-black text-slate-800 text-base mb-5 flex items-center gap-2"><TrendingDown size={20} className="text-rose-500" /> Biaya Operasional</h3>
+                  <h3 className="font-black text-slate-800 text-base mb-5 flex items-center gap-2"><TrendingDown size={20} className="text-rose-500" /> {t.dash_ops_expense}</h3>
                   <div className="space-y-4">
                     {expenses.length > 0 ? expenses.map((exp, idx) => (
                       <div key={idx} className="space-y-1.5">
@@ -242,7 +253,7 @@ export default function Dashboard() {
                           />
                         </div>
                       </div>
-                    )) : <div className="py-8 text-center text-slate-300 text-[10px] font-black uppercase">Belum ada biaya</div>}
+                    )) : <div className="py-8 text-center text-slate-300 text-[10px] font-black uppercase">{t.dash_no_data}</div>}
                   </div>
                 </motion.div>
               </div>
