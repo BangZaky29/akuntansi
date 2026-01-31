@@ -129,7 +129,6 @@ export default function Receivables() {
   };
 
   const assetAccounts = accounts.filter(a => a.type === 'aset');
-  const incomeAccounts = accounts.filter(a => a.type === 'pendapatan');
 
   return (
     <div className="flex min-h-screen bg-slate-50">

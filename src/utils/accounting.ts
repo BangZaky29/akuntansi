@@ -72,7 +72,7 @@ export function getTrialBalance(items: JournalItem[]) {
 
 export function getDashboardStats(items: JournalItem[]): DashboardStats {
   const profitLoss = calculateProfitLoss(items);
-  const { aset, kewajiban, modal } = calculateBalanceSheet(items);
+  const { kewajiban, modal } = calculateBalanceSheet(items);
   
   // Keyword Kas/Bank yang lebih luas
   const kasKeywords = ['kas', 'bank', 'cash', 'dana', 'e-wallet', 'ovo', 'gopay', 'mandiri', 'bca', 'bni', 'kantor'];
