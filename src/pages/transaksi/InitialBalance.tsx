@@ -1,12 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotify } from '../../contexts/NotificationContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Save, Info } from 'lucide-react';
-import { formatCurrency } from '../../utils/accounting';
 import type { Account } from '../../types';
 
 export default function InitialBalance() {

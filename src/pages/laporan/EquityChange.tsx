@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';

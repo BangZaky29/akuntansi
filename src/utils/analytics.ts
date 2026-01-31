@@ -1,6 +1,5 @@
 
 import type { JournalItem, DashboardStats } from '../types';
-import { formatCurrency } from './accounting';
 
 export interface MonthlyTrend {
   month: string;

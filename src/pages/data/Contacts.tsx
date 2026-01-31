@@ -1,6 +1,5 @@
 // C:\codingVibes\nuansasolution\.subpath\akuntansi\src\pages\data\Contacts.tsx
 import React, { useEffect, useState } from 'react';
-import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotify } from '../../contexts/NotificationContext';

@@ -1,5 +1,5 @@
 
-import type { JournalItem, DashboardStats, AccountType } from '../types';
+import type { JournalItem, DashboardStats} from '../types';
 
 export function calculateAccountBalance(items: JournalItem[]) {
   return items.reduce((total, item) => {

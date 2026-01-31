@@ -1,5 +1,5 @@
 
-  import React, { useEffect, useState } from 'react';
+  import { useEffect, useState } from 'react';
   import { motion, AnimatePresence } from 'framer-motion';
   import { supabase } from '../../lib/supabase';
   import { useSettings } from '../../contexts/SettingsContext';

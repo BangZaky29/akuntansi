@@ -43,8 +43,8 @@ export default function Dashboard() {
   const navigate = useNavigate();
   
   const [stats, setStats] = useState<DashboardStats>({ kas: 0, piutang: 0, hutang: 0, modal: 0, laba: 0 });
-  const [recentJournals, setRecentJournals] = useState<JournalWithItems[]>([]);
-  const [trends, setTrends] = useState<MonthlyTrend[]>([]);
+  const [setRecentJournals] = useState<JournalWithItems[]>([]);
+  const [setTrends] = useState<MonthlyTrend[]>([]);
   const [expenses, setExpenses] = useState<ExpenseCategory[]>([]);
   const [ratios, setRatios] = useState<FinancialRatios | null>(null);
   

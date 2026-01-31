@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useNotify } from '../../contexts/NotificationContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Briefcase, Loader2, Save, CheckCircle2, Info, AlertTriangle, PlusCircle } from 'lucide-react';
+import { Loader2, Save, CheckCircle2, Info, AlertTriangle, PlusCircle } from 'lucide-react';
 import type { Account } from '../../types';
 import { useNavigate, Link } from 'react-router-dom';
 

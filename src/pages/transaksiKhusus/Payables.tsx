@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { TrendingDown, Loader2, CheckCircle, Clock, Search, Plus, Trash2, Edit3, Save, ChevronDown, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, Search, Plus, Trash2, Edit3, Save, ChevronDown, AlertCircle } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
 import type { Payable, Account } from '../../types';
 import { useNotify } from '../../contexts/NotificationContext';

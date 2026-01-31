@@ -1,11 +1,11 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotify } from '../../contexts/NotificationContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Plus, Trash2, Loader2, Save, AlertCircle } from 'lucide-react';
+import { Trash2, Loader2, Save, AlertCircle } from 'lucide-react';
 import type { Account } from '../../types';
 import { formatCurrency } from '../../utils/accounting';
 import { useNavigate } from 'react-router-dom';
