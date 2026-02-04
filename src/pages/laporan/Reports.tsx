@@ -7,12 +7,12 @@ import type { JournalItem } from '../../types';
 import { calculateProfitLoss, calculateBalanceSheet, formatCurrency } from '../../utils/accounting';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, FileDown } from 'lucide-react';
-import { generateA4Report, downloadPDF } from '../../utils/handlerPDF';
+import { Loader2, Printer } from 'lucide-react';
+import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
 
 export default function Reports() {
-  const { notify, removeNotify } = useNotify();
+  const { notify } = useNotify();
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +21,7 @@ export default function Reports() {
 
   useEffect(() => {
     fetchData();
-  }, [activeTab]); 
+  }, [activeTab]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -57,46 +57,50 @@ export default function Reports() {
   };
 
   const handleExportPDF = () => {
-    const loadingId = notify('Sedang menyiapkan PDF...', 'loading');
-    
-    setTimeout(() => {
-      try {
-        const title = activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca';
-        const subtitle = `Periode Berjalan: ${new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}`;
-        
-        let columns = activeTab === 'profit-loss' ? ['Kategori Akun', 'Saldo (IDR)'] : ['Akun', 'Tipe', 'Saldo (IDR)'];
-        let rows: any[][] = [];
+    const title = activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca';
+    const period = new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
 
-        if (activeTab === 'profit-loss') {
-          rows = [
-            ['PENDAPATAN', ''],
-            ...groupItemsByAccount(incomeItems).map(([name, val]) => [name, formatCurrency(Math.abs(val))]),
-            ['BEBAN', ''],
-            ...groupItemsByAccount(expenseItems).map(([name, val]) => [name, formatCurrency(val)]),
-            ['TOTAL ' + (profitLoss >= 0 ? 'LABA' : 'RUGI'), formatCurrency(Math.abs(profitLoss))]
-          ];
-        } else {
-          rows = [
-            ['ASET (AKTIVA)', '', ''],
-            ...groupItemsByAccount(asetItems).map(([name, val]) => [name, 'Aset', formatCurrency(val)]),
-            ['KEWAJIBAN (PASSIVA)', '', ''],
-            ...groupItemsByAccount(kewajibanItems).map(([name, val]) => [name, 'Kewajiban', formatCurrency(Math.abs(val))]),
-            ['MODAL (PASSIVA)', '', ''],
-            ...groupItemsByAccount(modalItems).map(([name, val]) => [name, 'Modal', formatCurrency(Math.abs(val))]),
-            ['LABA PERIODE BERJALAN', 'Ekuitas', formatCurrency(profitLoss)]
-          ];
-        }
+    let columns = activeTab === 'profit-loss' ? ['Kategori Akun', 'Saldo (IDR)'] : ['Akun', 'Tipe', 'Saldo (IDR)'];
+    let rows: any[][] = [];
+    let footer: any[] = [];
 
-        const doc = generateA4Report({ title, subtitle, filename: title, columns, rows });
-        downloadPDF(doc, title);
-        
-        removeNotify(loadingId);
-        notify('Laporan berhasil diunduh', 'success');
-      } catch (err) {
-        removeNotify(loadingId);
-        notify('Gagal cetak PDF', 'error');
-      }
-    }, 500); // Delay kecil agar loading terlihat halus
+    if (activeTab === 'profit-loss') {
+      rows = [
+        ['PENDAPATAN', ''],
+        ...groupItemsByAccount(incomeItems).map(([name, val]) => [name, formatCurrency(Math.abs(val))]),
+        ['BEBAN', ''],
+        ...groupItemsByAccount(expenseItems).map(([name, val]) => [name, formatCurrency(val)]),
+        ['TOTAL ' + (profitLoss >= 0 ? 'LABA' : 'RUGI'), formatCurrency(Math.abs(profitLoss))]
+      ];
+      footer = [
+        { label: profitLoss >= 0 ? 'Total Laba Bersih' : 'Total Rugi Bersih', value: formatCurrency(Math.abs(profitLoss)) }
+      ];
+    } else {
+      rows = [
+        ['ASET (AKTIVA)', '', ''],
+        ...groupItemsByAccount(asetItems).map(([name, val]) => [name, 'Aset', formatCurrency(val)]),
+        ['KEWAJIBAN (PASSIVA)', '', ''],
+        ...groupItemsByAccount(kewajibanItems).map(([name, val]) => [name, 'Kewajiban', formatCurrency(Math.abs(val))]),
+        ['MODAL (PASSIVA)', '', ''],
+        ...groupItemsByAccount(modalItems).map(([name, val]) => [name, 'Modal', formatCurrency(Math.abs(val))]),
+        ['LABA PERIODE BERJALAN', 'Ekuitas', formatCurrency(profitLoss)]
+      ];
+      footer = [
+        { label: 'Total Aset', value: formatCurrency(balanceSheet.aset) },
+        { label: 'Total Pasiva', value: formatCurrency(balanceSheet.kewajiban + balanceSheet.modal + profitLoss) }
+      ];
+    }
+
+    generatePDF({
+      title,
+      period,
+      fileName: title.toLowerCase().replace(/\s+/g, '_'),
+      columns,
+      data: rows,
+      footer
+    });
+
+    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -112,11 +116,11 @@ export default function Reports() {
               {activeTab === 'profit-loss' ? 'Ringkasan pendapatan dan beban operasional' : 'Posisi keuangan: Aset, Kewajiban, dan Ekuitas'}
             </p>
           </div>
-          <button 
-            onClick={handleExportPDF} 
-            className="bg-[#6200EE] hover:bg-[#5000C7] text-white px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 transition-all shadow-xl shadow-purple-200 active:scale-95"
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-2 bg-[#6200EE] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#5000C7] transition-all disabled:opacity-50 shadow-lg shadow-purple-100"
           >
-            <FileDown size={18} /> Cetak Laporan
+            <Printer size={18} /> Cetak Laporan
           </button>
         </header>
 

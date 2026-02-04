@@ -103,4 +103,19 @@ export interface DashboardStats {
   laba: number;
 }
 
+export interface CashFlowForecast {
+  month: string;
+  invoice_in: number;
+  invoice_out: number;
+}
+
+export interface OverdueItem {
+  id: string;
+  type: 'receivable' | 'payable';
+  amount: number;
+  due_date: string;
+  description: string;
+  journal_id?: string;
+}
+
 export const VERSION = '1.2.0';

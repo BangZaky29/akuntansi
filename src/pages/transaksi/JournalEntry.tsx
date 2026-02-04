@@ -46,32 +46,30 @@ export default function JournalEntry() {
   const handleSave = async () => {
     if (!isBalanced) return notify('Jurnal tidak seimbang!', 'error');
     if (!header.description) return notify('Keterangan wajib diisi', 'error');
-    
+
     setSubmitting(true);
     try {
-      const { data: journal, error: jErr } = await supabase.from('journals').insert([{
-        user_id: user.id,
-        date: header.date,
-        description: header.description,
-        source: 'Manual'
-      }]).select().single();
-      
-      if (jErr) throw jErr;
-
       const items = rows.filter(r => r.account_id).map(r => ({
-        journal_id: journal.id,
         account_id: r.account_id,
-        debit: r.debit,
-        credit: r.credit
+        debit: Number(r.debit),
+        credit: Number(r.credit)
       }));
 
-      const { error: iErr } = await supabase.from('journal_items').insert(items);
-      if (iErr) throw iErr;
+      const { error } = await supabase.rpc('create_journal_entry', {
+        p_user_id: user.id,
+        p_date: header.date,
+        p_description: header.description,
+        p_source: 'Manual',
+        p_items: items
+      });
+
+      if (error) throw error;
 
       notify('Jurnal berhasil disimpan', 'success');
       navigate('/journal');
-    } catch (err) {
-      notify('Gagal menyimpan jurnal', 'error');
+    } catch (err: any) {
+      console.error(err);
+      notify('Gagal menyimpan jurnal: ' + (err.message || 'Error RPC'), 'error');
     } finally {
       setSubmitting(false);
     }
@@ -88,8 +86,8 @@ export default function JournalEntry() {
             <h1 className="text-2xl font-bold text-slate-800">Entri Jurnal Umum</h1>
             <p className="text-slate-500 text-sm">Pencatatan transaksi manual Double-Entry</p>
           </div>
-          <button 
-            onClick={handleSave} 
+          <button
+            onClick={handleSave}
             disabled={!isBalanced || submitting}
             className="bg-[#6200EE] text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 disabled:opacity-50 hover:bg-[#5000C7] transition-all"
           >
@@ -102,17 +100,17 @@ export default function JournalEntry() {
           <div className="p-6 border-b bg-slate-50 flex flex-wrap gap-4">
             <div className="flex-1 min-w-[200px]">
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Tanggal</label>
-              <input 
+              <input
                 type="date" className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none"
-                value={header.date} onChange={e => setHeader({...header, date: e.target.value})}
+                value={header.date} onChange={e => setHeader({ ...header, date: e.target.value })}
               />
             </div>
             <div className="flex-[3] min-w-[300px]">
               <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Deskripsi</label>
-              <input 
+              <input
                 type="text" placeholder="Keterangan transaksi"
                 className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 outline-none"
-                value={header.description} onChange={e => setHeader({...header, description: e.target.value})}
+                value={header.description} onChange={e => setHeader({ ...header, description: e.target.value })}
               />
             </div>
           </div>
@@ -131,7 +129,7 @@ export default function JournalEntry() {
                 {rows.map((row, idx) => (
                   <tr key={idx}>
                     <td className="p-2">
-                      <select 
+                      <select
                         className="w-full bg-transparent border-none outline-none p-2 font-semibold text-slate-700"
                         value={row.account_id} onChange={e => updateRow(idx, 'account_id', e.target.value)}
                       >
@@ -140,13 +138,13 @@ export default function JournalEntry() {
                       </select>
                     </td>
                     <td className="p-2">
-                      <input 
+                      <input
                         type="number" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-emerald-600"
                         placeholder="0" value={row.debit || ''} onChange={e => updateRow(idx, 'debit', e.target.value)}
                       />
                     </td>
                     <td className="p-2">
-                      <input 
+                      <input
                         type="number" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-rose-600"
                         placeholder="0" value={row.credit || ''} onChange={e => updateRow(idx, 'credit', e.target.value)}
                       />
@@ -159,7 +157,7 @@ export default function JournalEntry() {
               </tbody>
             </table>
           </div>
-          
+
           <div className="p-4 bg-slate-50 flex justify-between items-center">
             <button onClick={addRow} className="text-[#6200EE] font-bold text-sm hover:underline">+ Tambah Baris</button>
             {!isBalanced && totalDebit > 0 && (

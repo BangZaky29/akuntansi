@@ -4,10 +4,13 @@ import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, Filter, ChevronDown, BookOpen } from 'lucide-react';
+import { Loader2, Filter, ChevronDown, BookOpen, Printer } from 'lucide-react';
 import type { JournalItem, Account } from '../../types';
+import { generatePDF } from '../../utils/pdfGenerator';
+import { useNotify } from '../../contexts/NotificationContext';
 
 export default function Ledger() {
+  const { notify } = useNotify();
   const { fmtCurrency, fmtDate, currency } = useSettings();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -32,11 +35,44 @@ export default function Ledger() {
     }
   };
 
-  const filteredItems = selectedAccount === 'all' 
-    ? items 
+  const filteredItems = selectedAccount === 'all'
+    ? items
     : items.filter(i => i.account_id === selectedAccount);
 
   let runningBalance = 0;
+
+  const handlePrint = () => {
+    let printBalance = 0;
+    const tableData = filteredItems.map((item: JournalItem) => {
+      const debit = Number(item.debit) || 0;
+      const credit = Number(item.credit) || 0;
+      const isDebitNormal = item.account?.type === 'aset' || item.account?.type === 'beban';
+      printBalance += isDebitNormal ? (debit - credit) : (credit - debit);
+
+      return [
+        fmtDate((item as any).journal?.date),
+        (item as any).journal?.description || 'Mutasi Jurnal',
+        item.account?.name || '-',
+        debit > 0 ? fmtCurrency(debit) : '-',
+        credit > 0 ? fmtCurrency(credit) : '-',
+        fmtCurrency(printBalance)
+      ];
+    });
+
+    const accountName = selectedAccount === 'all'
+      ? 'Semua Akun'
+      : accounts.find(a => a.id === selectedAccount)?.name || 'Buku Besar';
+
+    generatePDF({
+      title: `Buku Besar - ${accountName}`,
+      period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+      fileName: `buku_besar_${accountName.toLowerCase().replace(/\s+/g, '_')}`,
+      columns: ['Tanggal', 'Deskripsi', 'Akun', 'Debit', 'Kredit', 'Saldo'],
+      data: tableData,
+    });
+
+    notify('Laporan berhasil diunduh', 'success');
+  };
 
   return (
     <div className="flex min-h-screen bg-slate-50">
@@ -47,18 +83,28 @@ export default function Ledger() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Buku Besar</h1>
             <p className="text-slate-500 text-sm font-medium">Rincian mutasi kronologis per akun ({currency})</p>
           </div>
-          <div className="flex items-center gap-3 bg-white p-1.5 pl-4 rounded-2xl border border-slate-200 shadow-sm min-w-[280px]">
-            <Filter size={16} className="text-slate-400" />
-            <div className="flex-1 relative">
-              <select 
-                className="w-full bg-transparent border-none outline-none text-xs font-black text-slate-700 appearance-none cursor-pointer pr-8 uppercase tracking-widest" 
-                value={selectedAccount} 
-                onChange={e => setSelectedAccount(e.target.value)}
-              >
-                <option value="all">Semua Akun</option>
-                {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-              </select>
-              <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
+            <button
+              onClick={handlePrint}
+              disabled={filteredItems.length === 0}
+              className="flex items-center justify-center gap-2 bg-[#6200EE] text-white px-4 py-2.5 rounded-xl text-sm font-bold hover:bg-[#5000C7] transition-all disabled:opacity-50 shadow-lg shadow-purple-100 h-[42px]"
+            >
+              <Printer size={18} />
+              Cetak
+            </button>
+            <div className="flex items-center gap-3 bg-white p-1.5 pl-4 rounded-2xl border border-slate-200 shadow-sm min-w-[280px] h-[42px]">
+              <Filter size={16} className="text-slate-400" />
+              <div className="flex-1 relative">
+                <select
+                  className="w-full bg-transparent border-none outline-none text-xs font-black text-slate-700 appearance-none cursor-pointer pr-8 uppercase tracking-widest"
+                  value={selectedAccount}
+                  onChange={e => setSelectedAccount(e.target.value)}
+                >
+                  <option value="all">Semua Akun</option>
+                  {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
+                </select>
+                <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+              </div>
             </div>
           </div>
         </header>
@@ -82,7 +128,7 @@ export default function Ledger() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {filteredItems.length > 0 ? filteredItems.map((item, idx) => {
+                  {filteredItems.length > 0 ? filteredItems.map((item: JournalItem, idx) => {
                     const debit = Number(item.debit) || 0;
                     const credit = Number(item.credit) || 0;
                     const isDebitNormal = item.account?.type === 'aset' || item.account?.type === 'beban';

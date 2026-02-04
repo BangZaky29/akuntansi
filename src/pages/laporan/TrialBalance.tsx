@@ -3,14 +3,14 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, FileDown } from 'lucide-react';
+import { Loader2, Printer } from 'lucide-react';
 import { formatCurrency, getTrialBalance } from '../../utils/accounting';
 import type { JournalItem } from '../../types';
-import { generateA4Report, downloadPDF } from '../../utils/handlerPDF';
+import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
 
 export default function TrialBalance() {
-  const { notify, removeNotify } = useNotify();
+  const { notify } = useNotify();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -26,33 +26,25 @@ export default function TrialBalance() {
   const totalCredit = data.reduce((s, r) => s + r.credit, 0);
 
   const handleExport = () => {
-    const loadingId = notify('Mencetak Neraca Saldo...', 'loading');
-    
-    // Gunakan setTimeout agar transisi loading terlihat halus dan memberi waktu browser memproses PDF
-    setTimeout(() => {
-      try {
-        const doc = generateA4Report({
-          title: 'Neraca Saldo',
-          subtitle: `Per Tanggal: ${new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}`,
-          filename: 'Neraca_Saldo',
-          columns: ['Nama Akun', 'Debit', 'Kredit'],
-          rows: [
-            ...data.map(r => [r.name, formatCurrency(r.debit), formatCurrency(r.credit)]),
-            ['TOTAL AKHIR', formatCurrency(totalDebit), formatCurrency(totalCredit)]
-          ]
-        });
-        
-        downloadPDF(doc, 'Neraca_Saldo');
-        
-        // Hapus notifikasi loading dan tampilkan sukses
-        removeNotify(loadingId);
-        notify('Neraca Saldo berhasil diunduh', 'success');
-      } catch (err) {
-        removeNotify(loadingId);
-        notify('Gagal mencetak Neraca Saldo', 'error');
-        console.error(err);
-      }
-    }, 600);
+    const tableData = data.map(r => [
+      r.name,
+      r.debit > 0 ? formatCurrency(r.debit) : '-',
+      r.credit > 0 ? formatCurrency(r.credit) : '-'
+    ]);
+
+    generatePDF({
+      title: 'Neraca Saldo',
+      period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+      fileName: 'neraca_saldo',
+      columns: ['Nama Akun', 'Debit', 'Kredit'],
+      data: tableData,
+      footer: [
+        { label: 'Total Debit', value: formatCurrency(totalDebit) },
+        { label: 'Total Kredit', value: formatCurrency(totalCredit) }
+      ]
+    });
+
+    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -64,11 +56,11 @@ export default function TrialBalance() {
             <h1 className="text-2xl font-black text-slate-900 tracking-tight">Neraca Saldo</h1>
             <p className="text-slate-500 text-sm font-medium">Daftar saldo seluruh akun per periode berjalan</p>
           </div>
-          <button 
-            onClick={handleExport} 
-            className="bg-[#6200EE] hover:bg-[#5000C7] text-white px-5 py-3 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 transition-all shadow-xl shadow-purple-200 active:scale-95"
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-2 bg-[#6200EE] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#5000C7] transition-all disabled:opacity-50 shadow-lg shadow-purple-100"
           >
-            <FileDown size={18} /> Ekspor PDF
+            <Printer size={18} /> Cetak Laporan
           </button>
         </header>
 

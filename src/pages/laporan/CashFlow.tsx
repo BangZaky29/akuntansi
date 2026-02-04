@@ -1,35 +1,82 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, Waves, ArrowUpCircle, ArrowDownCircle, Info } from 'lucide-react';
+import { Loader2, Waves, ArrowUpCircle, ArrowDownCircle, Info, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
-import type { JournalItem } from '../../types';
+import { generatePDF } from '../../utils/pdfGenerator';
 
 export default function CashFlow() {
-  const [items, setItems] = useState<JournalItem[]>([]);
+  const { user } = useAuth(); // Add useAuth to get user_id
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('journal_items').select('*, account:accounts(*), journal:journals(*)').then(({ data }) => {
-      setItems(data as any || []);
-      setLoading(false);
-    });
-  }, []);
+    if (user?.id) fetchCashFlow();
+  }, [user]);
 
-  const cashItems = items.filter(i => i.account?.name.toLowerCase().includes('kas') || i.account?.name.toLowerCase().includes('bank'));
-  const cashIn = cashItems.reduce((s, i) => s + (Number(i.debit) || 0), 0);
-  const cashOut = cashItems.reduce((s, i) => s + (Number(i.credit) || 0), 0);
+  const fetchCashFlow = async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_cash_flow_statement', {
+        p_user_id: user?.id
+      });
+      if (error) throw error;
+      setItems(data || []);
+    } catch (err) {
+      console.error('Error fetching cash flow:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const cashIn = items.reduce((s, i) => s + (Number(i.debit) || 0), 0);
+  const cashOut = items.reduce((s, i) => s + (Number(i.credit) || 0), 0);
   const netCash = cashIn - cashOut;
+
+  const handlePrint = () => {
+    const tableData = items.map(item => [
+      new Date(item.date).toLocaleDateString('id-ID'),
+      item.description,
+      item.category,
+      item.debit > 0 ? formatCurrency(item.debit) : '-',
+      item.credit > 0 ? formatCurrency(item.credit) : '-'
+    ]);
+
+    generatePDF({
+      title: 'Laporan Arus Kas',
+      period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
+      fileName: 'laporan_arus_kas',
+      columns: ['Tanggal', 'Deskripsi', 'Kategori', 'Masuk', 'Keluar'],
+      data: tableData,
+      footer: [
+        { label: 'Total Kas Masuk', value: formatCurrency(cashIn) },
+        { label: 'Total Kas Keluar', value: formatCurrency(cashOut) },
+        { label: 'Saldo Kas Bersih', value: formatCurrency(netCash) }
+      ]
+    });
+  };
+
+  const cashItems = items; // Alias for compatibility with render
 
   return (
     <div className="flex min-h-screen bg-slate-50">
       <Sidebar />
       <main className="flex-1 p-6 md:pb-6 pb-24 max-w-5xl mx-auto w-full">
-        <header className="mb-8">
-          <h1 className="text-2xl font-bold text-slate-800">Laporan Arus Kas</h1>
-          <p className="text-slate-500 text-sm">Pemantauan mutasi masuk dan keluar pada akun Kas/Bank secara real-time</p>
+        <header className="mb-8 flex justify-between items-start">
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Laporan Arus Kas</h1>
+            <p className="text-slate-500 text-sm">Pemantauan mutasi masuk dan keluar pada akun Kas/Bank secara real-time</p>
+          </div>
+          <button
+            onClick={handlePrint}
+            disabled={items.length === 0}
+            className="flex items-center gap-2 bg-[#6200EE] text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-[#5000C7] transition-all disabled:opacity-50 shadow-lg shadow-purple-100"
+          >
+            <Printer size={18} />
+            Cetak Laporan
+          </button>
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -77,8 +124,11 @@ export default function CashFlow() {
                 <tbody className="divide-y divide-slate-100">
                   {cashItems.length > 0 ? cashItems.map((item, idx) => (
                     <tr key={idx} className="hover:bg-slate-50/50">
-                      <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{new Date((item as any).journal?.date).toLocaleDateString('id-ID')}</td>
-                      <td className="px-6 py-4 font-semibold text-slate-700">{(item as any).journal?.description}</td>
+                      <td className="px-6 py-4 text-slate-400 whitespace-nowrap">{new Date(item.date).toLocaleDateString('id-ID')}</td>
+                      <td className="px-6 py-4 font-semibold text-slate-700">
+                        {item.description}
+                        <span className="block text-[10px] text-slate-400 font-normal">{item.category} • {item.ref_number || '-'}</span>
+                      </td>
                       <td className="px-6 py-4 text-right text-emerald-600 font-bold">{item.debit > 0 ? formatCurrency(item.debit) : '-'}</td>
                       <td className="px-6 py-4 text-right text-rose-600 font-bold">{item.credit > 0 ? formatCurrency(item.credit) : '-'}</td>
                     </tr>
