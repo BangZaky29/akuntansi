@@ -108,7 +108,7 @@ export default function InitialBalance() {
     const { error } = await supabase.auth.signInWithOtp({
       email: user.email,
       options: {
-        emailRedirectTo: window.location.href, // Tetap di halaman ini
+        emailRedirectTo: `${import.meta.env.NEXT_PUBLIC_BASE_URL}/profile`,
         shouldCreateUser: false // Jangan buat user baru
       }
     });
