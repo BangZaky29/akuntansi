@@ -17,11 +17,11 @@ interface VerificationConfig {
 const verificationConfig: Record<VerificationType, VerificationConfig> = {
     register: {
         title: 'Akun Terkonfirmasi!',
-        message: 'Selamat! Akun Anda telah berhasil diverifikasi. Anda sekarang dapat menggunakan semua fitur sistem akuntansi.',
+        message: 'Selamat! Akun Anda telah berhasil diverifikasi. Anda sekarang dapat melanjutkan ke aplikasi.',
         icon: '🎉',
         redirectPath: '/dashboard',
-        buttonText: 'Masuk ke Dashboard',
-        autoRedirectDelay: 5000
+        buttonText: 'Kembali ke tampilan Anda sebelumnya',
+        autoRedirectDelay: 3000
     },
     resetPassword: {
         title: 'Password Berhasil Direset!',
@@ -36,8 +36,8 @@ const verificationConfig: Record<VerificationType, VerificationConfig> = {
         message: 'Akses edit saldo awal telah dibuka. Anda sekarang dapat mengedit saldo pembukuan.',
         icon: '✅',
         redirectPath: '/initial-balance?unlock=true',
-        buttonText: 'Buka Saldo Awal',
-        autoRedirectDelay: 5000
+        buttonText: 'Kembali ke tampilan Anda sebelumnya',
+        autoRedirectDelay: 2000
     }
 };
 
