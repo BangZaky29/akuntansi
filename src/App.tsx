@@ -8,7 +8,7 @@ import Register from './pages/Register';
 import ResetPassword from './pages/ResetPassword';
 import VerificationSuccess from './pages/VerificationSuccess';
 
-export const ENABLE_DEV_COPY = true; // Toggle this to enable/disable developer copy buttons
+export const ENABLE_DEV_COPY = false; // Toggle this to enable/disable developer copy buttons
 
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
