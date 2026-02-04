@@ -1,14 +1,12 @@
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
-import type { Account, AccountType, NormalBalance } from '../../types';
+import type { Account } from '../../types';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Trash2, Database } from 'lucide-react';
 import { useNotify } from '../../contexts/NotificationContext';
-
-const accountTypes: AccountType[] = ['aset', 'kewajiban', 'modal', 'pendapatan', 'beban'];
 
 export default function Accounts() {
   const { user } = useAuth();
@@ -17,7 +15,6 @@ export default function Accounts() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tableError, setTableError] = useState(false);
-  const [newAccount, setNewAccount] = useState({ name: '', type: 'aset' as AccountType });
 
   const [showZero, setShowZero] = useState(false);
 
@@ -89,32 +86,6 @@ export default function Accounts() {
     }
   };
 
-  const handleAddAccount = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newAccount.name || tableError) return;
-
-    setIsSubmitting(true);
-    const normalBalance: NormalBalance =
-      (newAccount.type === 'aset' || newAccount.type === 'beban') ? 'debit' : 'kredit';
-
-    try {
-      const { error } = await supabase.from('accounts').insert([{
-        name: newAccount.name,
-        type: newAccount.type,
-        normal_balance: normalBalance,
-        user_id: user.id
-      }]);
-      if (error) throw error;
-      setNewAccount({ name: '', type: 'aset' });
-      await fetchAccounts();
-      notify('Akun berhasil ditambahkan', 'success');
-    } catch (err: any) {
-      notify('Gagal menambah akun', 'error');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const deleteAccount = async (id: string) => {
     if (!confirm('Hapus akun ini?')) return;
     try {
@@ -164,13 +135,8 @@ export default function Accounts() {
 
         {/* ... (Error Block) ... */}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit">
-            <h3 className="font-bold text-slate-800 mb-4">Tambah Akun Baru</h3>
-            {/* ... (Form) ... */}
-          </section>
-
-          <section className="lg:col-span-2 space-y-4">
+        <div className="grid grid-cols-1 gap-8">
+          <section className="space-y-4">
             {loading ? (
               <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#6200EE]" size={32} /></div>
             ) : displayedAccounts.length > 0 ? (
