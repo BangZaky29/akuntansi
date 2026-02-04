@@ -96,29 +96,21 @@ export default function InitialBalance() {
   };
 
   const handleSendReauth = async () => {
-    // Validate session before sending magic link
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      notify('Session login tidak valid. Silakan login ulang.', 'error');
-      return;
-    }
-
     setSending(true);
-    const { error } = await supabase.auth.signInWithOtp({
+
+    const { sendMagicLink, getMagicLinkMessage } = await import('../../utils/magicLink');
+
+    const result = await sendMagicLink({
       email: user.email,
-      options: {
-        emailRedirectTo: `${import.meta.env.NEXT_PUBLIC_BASE_URL}/profile`,
-        shouldCreateUser: false // Jangan buat user baru
-      }
+      type: 'unlockBalance',
+      onError: (error: string) => setAuthError(error)
     });
+
     setSending(false);
 
-    if (error) {
-      setAuthError('Gagal mengirim link: ' + error.message);
-    } else {
+    if (result.success) {
       setLinkSent(true);
-      notify(`Link verifikasi keamanan telah dikirim ke ${user.email}. Cek inbox atau spam folder.`, 'success');
+      notify(getMagicLinkMessage('unlockBalance', user.email) + '. Cek inbox atau spam folder.', 'success');
     }
   };
 
