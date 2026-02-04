@@ -5,6 +5,9 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Root Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
+
+export const ENABLE_DEV_COPY = true; // Toggle this to enable/disable developer copy buttons
+
 import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
@@ -46,11 +49,11 @@ export default function App() {
         {/* Data */}
         <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
         <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
-        
+
         {/* Transaksi */}
         <Route path="/initial-balance" element={<ProtectedRoute><InitialBalance /></ProtectedRoute>} />
         <Route path="/journal-entry" element={<ProtectedRoute><JournalEntry /></ProtectedRoute>} />
-        
+
         {/* Transaksi Khusus */}
         <Route path="/capital" element={<ProtectedRoute><Capital /></ProtectedRoute>} />
         <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />

@@ -30,7 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-import type { DashboardStats, JournalWithItems, CashFlowForecast, OverdueItem } from '../types';
+import type { DashboardStats, DashboardStatsRPCResponse, JournalWithItems, CashFlowForecast, OverdueItem } from '../types';
 import {
   type MonthlyTrend,
   type ExpenseCategory,
@@ -60,10 +60,11 @@ export default function Dashboard() {
   const [activeChart, setActiveChart] = useState<'balance' | 'trend'>('balance');
 
   useEffect(() => {
-    fetchData();
-    const timer = setTimeout(() => setChartReady(true), 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    if (user) {
+      fetchData();
+      setChartReady(true);
+    }
+  }, [user]);
 
   const fetchData = async () => {
     setRefreshing(true);
@@ -74,28 +75,69 @@ export default function Dashboard() {
 
       if (statsError) throw statsError;
 
+      // Type assertion and Mapping
+      const rpcStats = statsData as unknown as DashboardStatsRPCResponse;
+
+      const mappedStats: DashboardStats = {
+        kas: Number(rpcStats.cash_balance) || 0,
+        piutang: Number(rpcStats.receivable) || 0,
+        hutang: Number(rpcStats.payable) || 0,
+        laba: Number(rpcStats.profit) || 0,
+        modal: Number(rpcStats.equity) || 0
+      };
+
+      // ... (Trends, Expenses, CashFlow, Overdue mapping remain same) ...
       const { data: trendsData } = await supabase.rpc('get_monthly_trends', { p_user_id: user?.id });
+      const mappedTrends: MonthlyTrend[] = Array.isArray(trendsData) ? trendsData.map((t: any) => ({
+        month: t.month || t.period,
+        pendapatan: Number(t.income || t.pendapatan || 0),
+        beban: Number(t.expense || t.beban || 0)
+      })) : [];
+
+      // ... (Expenses, CashFlow, Overdue mapping remain same) ...
       const { data: expensesData } = await supabase.rpc('get_expense_breakdown', { p_user_id: user?.id });
+      const colors = ['#6366f1', '#ec4899', '#f59e0b', '#10b981', '#ef4444'];
+      const mappedExpenses: ExpenseCategory[] = Array.isArray(expensesData) ? expensesData.map((e: any, idx: number) => ({
+        name: e.category || e.name || 'Lainnya',
+        value: Number(e.amount || e.value || 0),
+        color: colors[idx % colors.length]
+      })) : [];
+
       const { data: cashFlowData } = await supabase.rpc('get_cash_flow_forecast', { p_user_id: user?.id });
+      const mappedCashFlow: CashFlowForecast[] = Array.isArray(cashFlowData) ? cashFlowData.map((c: any) => ({
+        month: c.month,
+        invoice_in: Number(c.cash_in || c.invoice_in || 0),
+        invoice_out: Number(c.cash_out || c.invoice_out || 0)
+      })) : [];
+
       const { data: overdueData } = await supabase.rpc('get_overdue_items', { p_user_id: user?.id });
+      const mappedOverdue: OverdueItem[] = Array.isArray(overdueData) ? overdueData.map((o: any) => ({
+        id: o.id,
+        type: o.type,
+        amount: Number(o.amount || 0),
+        due_date: o.due_date,
+        description: o.description,
+        journal_id: o.journal_id
+      })) : [];
 
-      // Peringatan jika Aset != Kewajiban + Modal + Laba
-      // Dalam akuntansi double-entry, aset - (kewajiban + modal) harus 0
-      // Kita gunakan estimasi dari stats karena tidak lagi download semua journal_items
-      const estimatedAset = (statsData?.kas || 0) + (statsData?.piutang || 0);
-      const estimatedPasiva = (statsData?.hutang || 0) + (statsData?.modal || 0) + (statsData?.laba || 0);
+      setStats(mappedStats);
+      setTrends(mappedTrends);
+      setExpenses(mappedExpenses);
+      setCashFlow(mappedCashFlow);
+      setOverdueItems(mappedOverdue);
+
+      // Balance Check
+      // Asset (Kas + Piutang) = Pasiva (Hutang + Modal + Laba)
+      const estimatedAset = mappedStats.kas + mappedStats.piutang;
+      const estimatedPasiva = mappedStats.hutang + mappedStats.modal + mappedStats.laba;
       const balanceDiff = Math.abs(estimatedAset - estimatedPasiva);
-      setIsUnbalanced(balanceDiff > 1);
 
-      setStats(statsData as DashboardStats);
-      setTrends((trendsData as unknown as MonthlyTrend[]) || []);
-      setExpenses((expensesData as unknown as ExpenseCategory[]) || []);
-      setCashFlow((cashFlowData as unknown as CashFlowForecast[]) || []);
-      setOverdueItems((overdueData as unknown as OverdueItem[]) || []);
+      // Allow small float error margin
+      setIsUnbalanced(balanceDiff > 100);
 
-      // Hitung rasio keuangan sederhana dari stats
-      const currentRatio = statsData.hutang === 0 ? 100 : ((statsData.kas + statsData.piutang) / statsData.hutang);
-      const debtEqRatio = statsData.modal === 0 ? 0 : (statsData.hutang / statsData.modal);
+      // Financial Ratios
+      const currentRatio = mappedStats.hutang === 0 ? 100 : ((mappedStats.kas + mappedStats.piutang) / mappedStats.hutang);
+      const debtEqRatio = mappedStats.modal === 0 ? 0 : (mappedStats.hutang / mappedStats.modal);
 
       let status = 'Sehat';
       let color = 'text-emerald-500';
@@ -117,7 +159,7 @@ export default function Dashboard() {
       setRatios({
         liquidity: currentRatio,
         debtToEquity: debtEqRatio,
-        netProfitMargin: 0, // Requires total revenue, skipping for optimization
+        netProfitMargin: 0,
         status: statusMap[status] || status,
         color
       });

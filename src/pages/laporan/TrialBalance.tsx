@@ -4,26 +4,42 @@ import { supabase } from '../../lib/supabase';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Printer } from 'lucide-react';
-import { formatCurrency, getTrialBalance } from '../../utils/accounting';
-import type { JournalItem } from '../../types';
+import { formatCurrency } from '../../utils/accounting';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function TrialBalance() {
   const { notify } = useNotify();
-  const [items, setItems] = useState<JournalItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.from('journal_items').select('*, account:accounts(*)').then(({ data }) => {
-      setItems(data as any || []);
-      setLoading(false);
-    });
+    fetchData();
   }, []);
 
-  const data = getTrialBalance(items);
-  const totalDebit = data.reduce((s, r) => s + r.debit, 0);
-  const totalCredit = data.reduce((s, r) => s + r.credit, 0);
+  const fetchData = async () => {
+    // FIX: Read directly from View not raw items
+    const { data } = await supabase
+      .from('account_balances')
+      .select('*')
+      .order('account_name');
+
+    if (data) {
+      setItems(data.map((r: any) => ({
+        // Mapping view columns to UI format
+        name: r.account_name,
+        debit: r.saldo_debit || 0,
+        credit: r.saldo_kredit || 0
+      })));
+    }
+    setLoading(false);
+  };
+
+  // Logic moved to View (Database)
+  const data = items as any[];
+  const totalDebit = data.reduce((s, r) => s + (r.debit || 0), 0);
+  const totalCredit = data.reduce((s, r) => s + (r.credit || 0), 0);
 
   const handleExport = () => {
     const tableData = data.map(r => [
@@ -62,6 +78,16 @@ export default function TrialBalance() {
           >
             <Printer size={18} /> Cetak Laporan
           </button>
+          <CopyToClipboardButton
+            label="Copy"
+            title="Neraca Saldo"
+            headers={['Nama Akun', 'Debit', 'Kredit']}
+            data={data.map(r => [
+              r.name,
+              r.debit > 0 ? formatCurrency(r.debit) : '-',
+              r.credit > 0 ? formatCurrency(r.credit) : '-'
+            ])}
+          />
         </header>
 
         {loading ? (

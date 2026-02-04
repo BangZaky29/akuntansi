@@ -8,6 +8,7 @@ import MobileNav from '../../components/MobileNav';
 import { BookOpen, ChevronDown, Loader2, FileText, RefreshCw, Printer } from 'lucide-react';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function Journal() {
   const { notify } = useNotify();
@@ -84,6 +85,20 @@ export default function Journal() {
               <Printer size={18} />
               Cetak
             </button>
+            <CopyToClipboardButton
+              label="Copy"
+              title="Jurnal Umum"
+              headers={['Tanggal', 'Deskripsi', 'Akun', 'Debit', 'Kredit']}
+              data={journals.flatMap(j =>
+                j.journal_items?.map((item: any, idx: number) => [
+                  idx === 0 ? fmtDate(j.date) : '',
+                  idx === 0 ? j.description : '',
+                  item.account?.name || 'Unknown',
+                  Number(item.debit) > 0 ? fmtCurrency(Number(item.debit)) : '-',
+                  Number(item.credit) > 0 ? fmtCurrency(Number(item.credit)) : '-'
+                ]) || []
+              )}
+            />
             <button onClick={fetchJournals} className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-[#6200EE] transition-all">
               <RefreshCw size={20} className={loading ? 'animate-spin text-[#6200EE]' : ''} />
             </button>

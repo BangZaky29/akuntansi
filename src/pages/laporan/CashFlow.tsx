@@ -7,6 +7,7 @@ import MobileNav from '../../components/MobileNav';
 import { Loader2, Waves, ArrowUpCircle, ArrowDownCircle, Info, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
 import { generatePDF } from '../../utils/pdfGenerator';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function CashFlow() {
   const { user } = useAuth(); // Add useAuth to get user_id
@@ -77,6 +78,18 @@ export default function CashFlow() {
             <Printer size={18} />
             Cetak Laporan
           </button>
+          <CopyToClipboardButton
+            label="Copy"
+            title="Laporan Arus Kas"
+            headers={['Tanggal', 'Deskripsi', 'Kategori', 'Masuk', 'Keluar']}
+            data={items.map(item => [
+              new Date(item.date).toLocaleDateString('id-ID'),
+              item.description,
+              item.category,
+              item.debit > 0 ? formatCurrency(item.debit) : '-',
+              item.credit > 0 ? formatCurrency(item.credit) : '-'
+            ])}
+          />
         </header>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">

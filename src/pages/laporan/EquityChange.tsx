@@ -7,6 +7,7 @@ import { Loader2, BarChart3, TrendingUp, UserCheck, ShieldCheck, Printer } from 
 import { formatCurrency, calculateProfitLoss } from '../../utils/accounting';
 import type { JournalItem } from '../../types';
 import { generatePDF } from '../../utils/pdfGenerator';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function EquityChange() {
   const [items, setItems] = useState<JournalItem[]>([]);
@@ -57,6 +58,16 @@ export default function EquityChange() {
             <Printer size={18} />
             Cetak Laporan
           </button>
+          <CopyToClipboardButton
+            label="Copy"
+            title="Laporan Perubahan Modal"
+            headers={['Komponen Ekuitas', 'Saldo']}
+            data={[
+              ['Modal Awal / Setoran', formatCurrency(initialEquity)],
+              [profitLoss >= 0 ? 'Laba Bersih' : 'Rugi Bersih', profitLoss < 0 ? `(${formatCurrency(Math.abs(profitLoss))})` : formatCurrency(profitLoss)],
+              ['Modal Akhir', formatCurrency(finalEquity)]
+            ]}
+          />
         </header>
 
         {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#6200EE]" size={32} /></div> : (

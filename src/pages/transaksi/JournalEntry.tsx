@@ -38,6 +38,7 @@ export default function JournalEntry() {
   const updateRow = (idx: number, field: string, val: any) => {
     const newRows = [...rows];
     (newRows[idx] as any)[field] = val;
+    // Enforce: Satu baris HANYA boleh debit ATAU kredit
     if (field === 'debit' && Number(val) > 0) newRows[idx].credit = 0;
     if (field === 'credit' && Number(val) > 0) newRows[idx].debit = 0;
     setRows(newRows);
@@ -126,34 +127,68 @@ export default function JournalEntry() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((row, idx) => (
-                  <tr key={idx}>
-                    <td className="p-2">
-                      <select
-                        className="w-full bg-transparent border-none outline-none p-2 font-semibold text-slate-700"
-                        value={row.account_id} onChange={e => updateRow(idx, 'account_id', e.target.value)}
-                      >
-                        <option value="">Pilih Akun...</option>
-                        {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-emerald-600"
-                        placeholder="0" value={row.debit || ''} onChange={e => updateRow(idx, 'debit', e.target.value)}
-                      />
-                    </td>
-                    <td className="p-2">
-                      <input
-                        type="number" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-rose-600"
-                        placeholder="0" value={row.credit || ''} onChange={e => updateRow(idx, 'credit', e.target.value)}
-                      />
-                    </td>
-                    <td className="p-2 text-center">
-                      <button onClick={() => removeRow(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
-                    </td>
-                  </tr>
-                ))}
+                {rows.map((row, idx) => {
+                  const selectedAcc = accounts.find(a => a.id === row.account_id);
+                  const isDebitNormal = selectedAcc ? (selectedAcc.type === 'aset' || selectedAcc.type === 'beban') : true;
+
+                  // Row Validation: Check if both debit and credit are filled (Logic Error)
+                  const isDoubleFilled = Number(row.debit) > 0 && Number(row.credit) > 0;
+
+                  // Helper text to guide user on "Normal Balance"
+                  const getDebitHint = () => {
+                    if (!selectedAcc) return '';
+                    if (isDebitNormal) return `Bertambah (+${selectedAcc.type})`;
+                    return `Berkurang (-${selectedAcc.type})`;
+                  };
+                  const getCreditHint = () => {
+                    if (!selectedAcc) return '';
+                    if (!isDebitNormal) return `Bertambah (+${selectedAcc.type})`;
+                    return `Berkurang (-${selectedAcc.type})`;
+                  };
+
+                  return (
+                    <div key={idx} style={{ display: 'contents' }}>
+                      <tr>
+                        <td className="p-2 valign-top">
+                          <select
+                            className="w-full bg-transparent border-none outline-none p-2 font-semibold text-slate-700"
+                            value={row.account_id} onChange={e => updateRow(idx, 'account_id', e.target.value)}
+                          >
+                            <option value="">Pilih Akun...</option>
+                            {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name} ({acc.type})</option>)}
+                          </select>
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number" min="0" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-emerald-600"
+                            placeholder="0" value={row.debit || ''} onChange={e => updateRow(idx, 'debit', e.target.value)}
+                          />
+                          {row.account_id && <div className="text-[9px] text-right font-medium text-emerald-600/60 uppercase tracking-wider">{getDebitHint()}</div>}
+                        </td>
+                        <td className="p-2">
+                          <input
+                            type="number" min="0" className="w-full bg-transparent border-none text-right outline-none p-2 font-bold text-rose-600"
+                            placeholder="0" value={row.credit || ''} onChange={e => updateRow(idx, 'credit', e.target.value)}
+                          />
+                          {row.account_id && <div className="text-[9px] text-right font-medium text-rose-600/60 uppercase tracking-wider">{getCreditHint()}</div>}
+                        </td>
+                        <td className="p-2 text-center">
+                          <button onClick={() => removeRow(idx)} className="text-slate-300 hover:text-red-500"><Trash2 size={16} /></button>
+                        </td>
+                      </tr>
+                      {isDoubleFilled && (
+                        <tr>
+                          <td colSpan={4} className="px-4 pb-4 pt-0">
+                            <div className="bg-rose-50 text-rose-600 px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2">
+                              <AlertCircle size={14} />
+                              Satu baris jurnal tidak boleh terisi Debit dan Kredit sekaligus. Harap kosongkan salah satu.
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </div>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -167,8 +202,8 @@ export default function JournalEntry() {
             )}
           </div>
         </div>
-      </main>
+      </main >
       <MobileNav />
-    </div>
+    </div >
   );
 }

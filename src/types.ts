@@ -103,6 +103,18 @@ export interface DashboardStats {
   laba: number;
 }
 
+export interface DashboardStatsRPCResponse {
+  income: number;
+  expense: number;
+  profit: number;
+  cash_in: number;
+  cash_out: number;
+  cash_balance: number;
+  receivable: number;
+  payable: number;
+  equity: number;
+}
+
 export interface CashFlowForecast {
   month: string;
   invoice_in: number;

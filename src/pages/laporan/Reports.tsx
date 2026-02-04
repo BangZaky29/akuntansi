@@ -3,18 +3,18 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
-import type { JournalItem } from '../../types';
-import { calculateProfitLoss, calculateBalanceSheet, formatCurrency } from '../../utils/accounting';
+import { formatCurrency } from '../../utils/accounting';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Printer } from 'lucide-react';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function Reports() {
   const { notify } = useNotify();
   const [searchParams] = useSearchParams();
-  const [items, setItems] = useState<JournalItem[]>([]);
+  const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const activeTab = (searchParams.get('type') as 'profit-loss' | 'balance-sheet') || 'profit-loss';
@@ -26,34 +26,44 @@ export default function Reports() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // FIX: Read from View (Balance Sheet Snapshot)
       const { data, error } = await supabase
-        .from('journal_items')
-        .select('*, account:accounts(*)');
+        .from('account_balances')
+        .select('*')
+        .order('account_name');
       if (error) throw error;
-      setItems(data as unknown as JournalItem[]);
+      setItems(data || []);
     } finally {
       setLoading(false);
     }
   };
 
-  const profitLoss = calculateProfitLoss(items);
-  const balanceSheet = calculateBalanceSheet(items);
+  // Filter based on View Data (Account Balances)
+  const incomeItems = items.filter(i => i.type === 'pendapatan');
+  const expenseItems = items.filter(i => i.type === 'beban');
+  const asetItems = items.filter(i => i.type === 'aset');
+  const kewajibanItems = items.filter(i => i.type === 'kewajiban');
+  const modalItems = items.filter(i => i.type === 'modal');
 
-  const incomeItems = items.filter(i => i.account?.type === 'pendapatan');
-  const expenseItems = items.filter(i => i.account?.type === 'beban');
-  const asetItems = items.filter(i => i.account?.type === 'aset');
-  const kewajibanItems = items.filter(i => i.account?.type === 'kewajiban');
-  const modalItems = items.filter(i => i.account?.type === 'modal');
+  // Calculate Aggregates from Balances
+  // Note: 'balance' in View is already Net based on Normal Balance
+  const totalIncome = incomeItems.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+  const totalExpense = expenseItems.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+  const profitLoss = totalIncome - totalExpense;
 
-  const groupItemsByAccount = (list: JournalItem[]) => {
-    const map = new Map();
-    list.forEach(item => {
-      const name = item.account?.name || 'Unknown';
-      const current = map.get(name) || 0;
-      const balance = (Number(item.debit) || 0) - (Number(item.credit) || 0);
-      map.set(name, current + balance);
-    });
-    return Array.from(map.entries());
+  const totalAset = asetItems.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+  const totalKewajiban = kewajibanItems.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+  const totalModal = modalItems.reduce((sum, i) => sum + (Number(i.balance) || 0), 0);
+
+  const balanceSheet = {
+    aset: totalAset,
+    kewajiban: totalKewajiban,
+    modal: totalModal
+  };
+
+  const groupItemsByAccount = (list: any[]) => {
+    // View is already unique by account, but we keep the mapping structure for consistency with UI
+    return list.map(item => [item.account_name, Number(item.balance) || 0]);
   };
 
   const handleExportPDF = () => {
@@ -122,6 +132,32 @@ export default function Reports() {
           >
             <Printer size={18} /> Cetak Laporan
           </button>
+          <CopyToClipboardButton
+            label="Copy"
+            title={activeTab === 'profit-loss' ? 'Laporan Laba Rugi' : 'Laporan Neraca'}
+            headers={activeTab === 'profit-loss' ? ['Kategori Akun', 'Saldo'] : ['Akun', 'Tipe', 'Saldo']}
+            data={(() => {
+              if (activeTab === 'profit-loss') {
+                return [
+                  ['PENDAPATAN', ''],
+                  ...groupItemsByAccount(incomeItems).map(([name, val]) => [name, formatCurrency(Math.abs(val))]),
+                  ['BEBAN', ''],
+                  ...groupItemsByAccount(expenseItems).map(([name, val]) => [name, formatCurrency(val)]),
+                  ['TOTAL ' + (profitLoss >= 0 ? 'LABA' : 'RUGI'), formatCurrency(Math.abs(profitLoss))]
+                ];
+              } else {
+                return [
+                  ['ASET (AKTIVA)', '', ''],
+                  ...groupItemsByAccount(asetItems).map(([name, val]) => [name, 'Aset', formatCurrency(val)]),
+                  ['KEWAJIBAN (PASSIVA)', '', ''],
+                  ...groupItemsByAccount(kewajibanItems).map(([name, val]) => [name, 'Kewajiban', formatCurrency(Math.abs(val))]),
+                  ['MODAL (PASSIVA)', '', ''],
+                  ...groupItemsByAccount(modalItems).map(([name, val]) => [name, 'Modal', formatCurrency(Math.abs(val))]),
+                  ['LABA PERIODE BERJALAN', 'Ekuitas', formatCurrency(profitLoss)]
+                ];
+              }
+            })()}
+          />
         </header>
 
         {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#6200EE]" size={32} /></div> : (

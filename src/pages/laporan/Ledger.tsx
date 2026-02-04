@@ -8,6 +8,7 @@ import { Loader2, Filter, ChevronDown, BookOpen, Printer } from 'lucide-react';
 import type { JournalItem, Account } from '../../types';
 import { generatePDF } from '../../utils/pdfGenerator';
 import { useNotify } from '../../contexts/NotificationContext';
+import CopyToClipboardButton from '../../components/CopyToClipboardButton';
 
 export default function Ledger() {
   const { notify } = useNotify();
@@ -15,7 +16,7 @@ export default function Ledger() {
   const [items, setItems] = useState<JournalItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedAccount, setSelectedAccount] = useState<string>('all');
+  const [selectedAccount, setSelectedAccount] = useState<string>('');
 
   useEffect(() => {
     fetchData();
@@ -47,7 +48,12 @@ export default function Ledger() {
       const debit = Number(item.debit) || 0;
       const credit = Number(item.credit) || 0;
       const isDebitNormal = item.account?.type === 'aset' || item.account?.type === 'beban';
-      printBalance += isDebitNormal ? (debit - credit) : (credit - debit);
+
+      if (isDebitNormal) {
+        printBalance += (debit - credit);
+      } else {
+        printBalance += (credit - debit);
+      }
 
       return [
         fmtDate((item as any).journal?.date),
@@ -92,6 +98,34 @@ export default function Ledger() {
               <Printer size={18} />
               Cetak
             </button>
+            <CopyToClipboardButton
+              label="Copy"
+              title={`Buku Besar - ${selectedAccount === 'all' ? 'Semua Akun' : accounts.find(a => a.id === selectedAccount)?.name}`}
+              headers={['Tanggal', 'Deskripsi', 'Akun', 'Debit', 'Kredit', 'Saldo']}
+              data={(() => {
+                let rb = 0;
+                return filteredItems.map((item: any) => {
+                  const d = Number(item.debit) || 0;
+                  const c = Number(item.credit) || 0;
+                  const isDebitNormal = item.account?.type === 'aset' || item.account?.type === 'beban';
+
+                  if (isDebitNormal) {
+                    rb += (d - c);
+                  } else {
+                    rb += (c - d);
+                  }
+
+                  return [
+                    fmtDate(item.journal?.date),
+                    item.journal?.description || 'Mutasi',
+                    item.account?.name || '-',
+                    d > 0 ? fmtCurrency(d) : '-',
+                    c > 0 ? fmtCurrency(c) : '-',
+                    fmtCurrency(rb)
+                  ];
+                });
+              })()}
+            />
             <div className="flex items-center gap-3 bg-white p-1.5 pl-4 rounded-2xl border border-slate-200 shadow-sm min-w-[280px] h-[42px]">
               <Filter size={16} className="text-slate-400" />
               <div className="flex-1 relative">
@@ -100,7 +134,7 @@ export default function Ledger() {
                   value={selectedAccount}
                   onChange={e => setSelectedAccount(e.target.value)}
                 >
-                  <option value="all">Semua Akun</option>
+                  <option value="">PILIH AKUN (WAJIB)</option>
                   {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
                 </select>
                 <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
@@ -109,7 +143,13 @@ export default function Ledger() {
           </div>
         </header>
 
-        {loading ? (
+        {selectedAccount === '' ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[2.5rem] border border-slate-200 border-dashed">
+            <BookOpen size={64} className="text-slate-200 mb-6" />
+            <h3 className="text-lg font-black text-slate-400 uppercase tracking-widest text-center">Buku Besar Per Akun</h3>
+            <p className="text-slate-400 text-sm font-medium mt-2">Silakan pilih akun untuk melihat rincian mutasi</p>
+          </div>
+        ) : loading ? (
           <div className="flex flex-col items-center justify-center py-20 bg-white rounded-[2.5rem] border border-slate-200">
             <Loader2 className="animate-spin text-[#6200EE] mb-4" size={32} />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Memuat Transaksi...</p>
@@ -131,8 +171,16 @@ export default function Ledger() {
                   {filteredItems.length > 0 ? filteredItems.map((item: JournalItem, idx) => {
                     const debit = Number(item.debit) || 0;
                     const credit = Number(item.credit) || 0;
+                    // FIX: Strict Normal Balance Logic
+                    // Aset/Beban: Tambah di Debit, Kurang di Kredit
+                    // Kewajiban/Modal/Pendapatan: Tambah di Kredit, Kurang di Debit
                     const isDebitNormal = item.account?.type === 'aset' || item.account?.type === 'beban';
-                    runningBalance += isDebitNormal ? (debit - credit) : (credit - debit);
+
+                    if (isDebitNormal) {
+                      runningBalance += (debit - credit);
+                    } else {
+                      runningBalance += (credit - debit);
+                    }
 
                     return (
                       <tr key={idx} className="hover:bg-slate-50/30 transition-colors">
@@ -164,9 +212,10 @@ export default function Ledger() {
               </table>
             </div>
           </div>
-        )}
-      </main>
+        )
+        }
+      </main >
       <MobileNav />
-    </div>
+    </div >
   );
 }
