@@ -5,6 +5,8 @@ import ProtectedRoute from './components/ProtectedRoute';
 // Root Pages
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ResetPassword from './pages/ResetPassword';
+import VerificationSuccess from './pages/VerificationSuccess';
 
 export const ENABLE_DEV_COPY = true; // Toggle this to enable/disable developer copy buttons
 
@@ -42,6 +44,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/verification-success" element={<VerificationSuccess />} />
 
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />

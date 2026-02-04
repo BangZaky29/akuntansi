@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 /**
  * Types of magic link verification
  */
-export type MagicLinkType = 'register' | 'unlockBalance' | 'confirmAction';
+export type MagicLinkType = 'register' | 'unlockBalance' | 'confirmAction' | 'resetPassword';
 
 /**
  * Configuration for magic link
@@ -31,6 +31,8 @@ const getRedirectUrl = (type: MagicLinkType, customPath?: string): string => {
             return window.location.href; // Stay on current page
         case 'confirmAction':
             return window.location.href;
+        case 'resetPassword':
+            return `${window.location.origin}/reset-password`; // Go to password reset page
         default:
             return window.location.href;
     }
@@ -47,7 +49,7 @@ const shouldCreateUser = (type: MagicLinkType): boolean => {
  * Validate session before sending magic link (for non-registration types)
  */
 const validateSession = async (type: MagicLinkType): Promise<boolean> => {
-    if (type === 'register') return true; // No session needed for registration
+    if (type === 'register' || type === 'resetPassword') return true; // No session needed for registration or password reset
 
     const { data: { session } } = await supabase.auth.getSession();
     return !!session;
@@ -116,7 +118,8 @@ export const getMagicLinkMessage = (type: MagicLinkType, email: string): string 
     const messages = {
         register: `Link konfirmasi akun telah dikirim ke ${email}`,
         unlockBalance: `Link verifikasi keamanan telah dikirim ke ${email}`,
-        confirmAction: `Link konfirmasi telah dikirim ke ${email}`
+        confirmAction: `Link konfirmasi telah dikirim ke ${email}`,
+        resetPassword: `Link reset password telah dikirim ke ${email}`
     };
 
     return messages[type] || `Link verifikasi telah dikirim ke ${email}`;

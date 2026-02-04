@@ -10,6 +10,20 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuth = async () => {
       try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+
+        console.log('AuthCallback: detecting params', {
+          search: window.location.search,
+          hash: window.location.hash
+        });
+
+        // Detect verification type from URL params
+        const type = urlParams.get('type') || hashParams.get('type') || 'email';
+        const unlockParam = urlParams.get('unlock') || hashParams.get('unlock');
+
+        console.log('AuthCallback: params found', { type, unlockParam });
+
         // ⬇️ penting untuk signup / email confirmation
         const { error: exchangeError } =
           await supabase.auth.exchangeCodeForSession(window.location.href)
@@ -23,11 +37,38 @@ export default function AuthCallback() {
         const { data } = await supabase.auth.getSession()
 
         if (!data.session) {
+          console.log('AuthCallback: no session found');
           navigate('/login', { replace: true })
           return
         }
 
-        navigate('/dashboard', { replace: true })
+        // Determine verification type and redirect to success page
+        let verificationType = 'register';
+
+        // Check if unlock param is present (for unlock balance flow)
+        if (unlockParam === 'true') {
+          console.log('AuthCallback: detected unlock flow from param');
+          verificationType = 'unlockBalance';
+        }
+        // Priority 2: Recovery/Reset Password type
+        else if (type === 'recovery') {
+          console.log('AuthCallback: detected password recovery flow, redirecting to reset-password');
+          navigate('/reset-password', { replace: true });
+          return;
+        }
+        // Priority 3: Magiclink type with secondary checks
+        else if (type === 'magiclink') {
+          const redirectTo = urlParams.get('redirect_to') || hashParams.get('redirect_to') || '';
+          console.log('AuthCallback: checking magiclink redirect_to', { redirectTo });
+
+          if (redirectTo.includes('unlock=true')) {
+            console.log('AuthCallback: detected unlock flow from redirect_to');
+            verificationType = 'unlockBalance';
+          }
+        }
+
+        // Redirect to success page with type
+        navigate(`/verification-success?type=${verificationType}`, { replace: true });
       } catch (err) {
         console.error('Auth callback fatal error:', err)
         navigate('/login', { replace: true })

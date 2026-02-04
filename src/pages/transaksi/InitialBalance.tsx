@@ -1,5 +1,6 @@
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNotify } from '../../contexts/NotificationContext';
@@ -89,6 +90,25 @@ export default function InitialBalance() {
     };
   }, [linkSent, notify]);
 
+  const [searchParams] = useSearchParams();
+
+  // Check if user is redirected from verification success (unlock balance)
+  useEffect(() => {
+    const shouldUnlock = searchParams.get('unlock') === 'true';
+    console.log('InitialBalance: checking unlock param:', { shouldUnlock, user: !!user });
+
+    if (shouldUnlock && user) {
+      console.log('InitialBalance: auto-unlocking edit mode');
+      setIsUnlocked(true);
+      notify('Verifikasi berhasil. Mode edit aktif.', 'success');
+
+      // Clean URL params using react-router instead of native API to avoid breaking state
+      const newParams = new URLSearchParams(searchParams);
+      newParams.delete('unlock');
+      window.history.replaceState({}, '', `${window.location.pathname}${newParams.toString() ? '?' + newParams.toString() : ''}`);
+    }
+  }, [user, searchParams, notify]);
+
   const handleUnlockRequest = () => {
     setIsUnlockModalOpen(true);
     setLinkSent(false);
@@ -100,9 +120,11 @@ export default function InitialBalance() {
 
     const { sendMagicLink, getMagicLinkMessage } = await import('../../utils/magicLink');
 
+    // Use custom redirect to auth callback with unlock param
     const result = await sendMagicLink({
       email: user.email,
       type: 'unlockBalance',
+      redirectPath: '/auth/callback?unlock=true', // Will trigger auth callback flow
       onError: (error: string) => setAuthError(error)
     });
 
