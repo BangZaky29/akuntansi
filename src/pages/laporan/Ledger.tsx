@@ -4,23 +4,26 @@ import { supabase } from '../../lib/supabase';
 import { useSettings } from '../../contexts/SettingsContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
-import { Loader2, Filter, ChevronDown, BookOpen, Printer } from 'lucide-react';
+import { Loader2, BookOpen, Printer } from 'lucide-react';
 import type { JournalItem, Account } from '../../types';
-import { generatePDF } from '../../utils/pdfGenerator';
-import { useNotify } from '../../contexts/NotificationContext';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import CustomSelect from '../../components/CustomSelect';
+import { useAuth } from '../../contexts/AuthContext';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function Ledger() {
-  const { notify } = useNotify();
+  const { user } = useAuth();
   const { fmtCurrency, fmtDate, currency } = useSettings();
   const [items, setItems] = useState<JournalItem[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedAccount, setSelectedAccount] = useState<string>('');
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user?.id) fetchData();
+  }, [user?.id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -69,15 +72,13 @@ export default function Ledger() {
       ? 'Semua Akun'
       : accounts.find(a => a.id === selectedAccount)?.name || 'Buku Besar';
 
-    generatePDF({
+    handlePrintRequest({
       title: `Buku Besar - ${accountName}`,
       period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
       fileName: `buku_besar_${accountName.toLowerCase().replace(/\s+/g, '_')}`,
       columns: ['Tanggal', 'Deskripsi', 'Akun', 'Debit', 'Kredit', 'Saldo'],
       data: tableData,
     });
-
-    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -126,20 +127,16 @@ export default function Ledger() {
                 });
               })()}
             />
-            <div className="flex items-center gap-3 bg-white p-1.5 pl-4 rounded-2xl border border-slate-200 shadow-sm min-w-[280px] h-[42px]">
-              <Filter size={16} className="text-slate-400" />
-              <div className="flex-1 relative">
-                <select
-                  className="w-full bg-transparent border-none outline-none text-xs font-black text-slate-700 appearance-none cursor-pointer pr-8 uppercase tracking-widest"
-                  value={selectedAccount}
-                  onChange={e => setSelectedAccount(e.target.value)}
-                >
-                  <option value="">PILIH AKUN (WAJIB)</option>
-                  {accounts.map(acc => <option key={acc.id} value={acc.id}>{acc.name}</option>)}
-                </select>
-                <ChevronDown size={14} className="absolute right-0 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-              </div>
-            </div>
+            <CustomSelect
+              options={[
+                { id: 'all', name: 'SEMUA AKUN' },
+                ...accounts.map(acc => ({ id: acc.id, name: acc.name.toUpperCase() }))
+              ]}
+              value={selectedAccount}
+              onChange={setSelectedAccount}
+              placeholder="PILIH AKUN (WAJIB)"
+              className="min-w-[280px]"
+            />
           </div>
         </header>
 
@@ -216,6 +213,12 @@ export default function Ledger() {
         }
       </main >
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div >
   );
 }

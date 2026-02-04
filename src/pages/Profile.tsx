@@ -5,10 +5,10 @@ import { useSettings } from '../contexts/SettingsContext';
 import { supabase } from '../lib/supabase';
 import Sidebar from '../components/Sidebar';
 import MobileNav from '../components/MobileNav';
-import { 
-  LogOut, Building, Globe, Save, Loader2, 
+import {
+  LogOut, Building, Globe, Save, Loader2,
   Clock, Bell, Shield, ToggleLeft, ToggleRight,
-  CheckCircle2, ChevronDown, MapPin, AlertTriangle
+  CheckCircle2, ChevronDown, MapPin, AlertTriangle, RefreshCcw
 } from 'lucide-react';
 import { useNotify } from '../contexts/NotificationContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -129,8 +129,8 @@ export default function Profile() {
             <h1 className="text-3xl font-black text-slate-900 tracking-tight">{t.settings}</h1>
             <p className="text-slate-500 text-sm font-medium">{t.config_desc}</p>
           </div>
-          <button 
-            onClick={() => setShowLogoutConfirm(true)} 
+          <button
+            onClick={() => setShowLogoutConfirm(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-rose-100 text-rose-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-rose-50 transition-all shadow-sm active:scale-95"
           >
             <LogOut size={16} /> {t.logout}
@@ -149,9 +149,8 @@ export default function Profile() {
                 <button
                   key={item.id}
                   onClick={() => setActiveMenu(item.id as MenuType)}
-                  className={`w-full p-4 rounded-[2rem] flex items-center gap-4 transition-all text-left group ${
-                    activeMenu === item.id ? 'bg-[#6200EE] text-white shadow-xl shadow-purple-200' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-100'
-                  }`}
+                  className={`w-full p-4 rounded-[2rem] flex items-center gap-4 transition-all text-left group ${activeMenu === item.id ? 'bg-[#6200EE] text-white shadow-xl shadow-purple-200' : 'bg-white text-slate-500 hover:bg-slate-100 border border-slate-100'
+                    }`}
                 >
                   <div className={`p-2.5 rounded-2xl ${activeMenu === item.id ? 'bg-white/20' : 'bg-slate-50 text-slate-400'}`}><item.icon size={20} /></div>
                   <div className="min-w-0">
@@ -164,7 +163,7 @@ export default function Profile() {
 
             <div className="lg:col-span-3">
               <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm p-8 md:p-10 min-h-[500px]">
-                
+
                 {activeMenu === 'bisnis' && (
                   <form onSubmit={handleUpdateProfile} className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
                     <div className="flex items-center gap-4">
@@ -176,20 +175,20 @@ export default function Profile() {
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{t.business_name}</label>
                         <div className="relative group">
                           <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#6200EE] transition-colors" size={18} />
-                          <input type="text" required className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.business_name} onChange={e => setFormData({...formData, business_name: e.target.value})} />
+                          <input type="text" required className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.business_name} onChange={e => setFormData({ ...formData, business_name: e.target.value })} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{t.city}</label>
                         <div className="relative group">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-[#6200EE] transition-colors" size={18} />
-                          <input type="text" className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.city} placeholder="Misal: Bogor" onChange={e => setFormData({...formData, city: e.target.value})} />
+                          <input type="text" className="w-full pl-12 bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] font-bold" value={formData.city} placeholder="Misal: Bogor" onChange={e => setFormData({ ...formData, city: e.target.value })} />
                         </div>
                       </div>
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{t.currency}</label>
                         <div className="relative">
-                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-purple-500/5" value={formData.currency} onChange={e => setFormData({...formData, currency: e.target.value})}>
+                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer focus:ring-4 focus:ring-purple-500/5" value={formData.currency} onChange={e => setFormData({ ...formData, currency: e.target.value })}>
                             <option value="IDR">IDR - Indonesian Rupiah</option>
                             <option value="USD">USD - US Dollar</option>
                           </select>
@@ -217,7 +216,7 @@ export default function Profile() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{t.app_lang}</label>
                         <div className="relative">
-                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer" value={settingsData.language} onChange={e => setSettingsData({...settingsData, language: e.target.value})}>
+                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer" value={settingsData.language} onChange={e => setSettingsData({ ...settingsData, language: e.target.value })}>
                             <option value="id">Bahasa Indonesia</option>
                             <option value="en">English (US)</option>
                           </select>
@@ -227,7 +226,7 @@ export default function Profile() {
                       <div className="space-y-2">
                         <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">{t.timezone}</label>
                         <div className="relative">
-                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer" value={settingsData.timezone} onChange={e => setSettingsData({...settingsData, timezone: e.target.value})}>
+                          <select className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-5 py-4 outline-none font-bold appearance-none cursor-pointer" value={settingsData.timezone} onChange={e => setSettingsData({ ...settingsData, timezone: e.target.value })}>
                             <option value="Asia/Jakarta">WIB (GMT+7)</option>
                             <option value="Asia/Makassar">WITA (GMT+8)</option>
                             <option value="Asia/Jayapura">WIT (GMT+9)</option>
@@ -250,7 +249,7 @@ export default function Profile() {
                     </div>
                     <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
                       <div className="flex items-center gap-4"><Clock className="text-slate-400" /><span className="text-sm font-bold text-slate-700">{t.due_date_alert}</span></div>
-                      <button onClick={() => setSettingsData({...settingsData, notif_due_date: !settingsData.notif_due_date})} className={settingsData.notif_due_date ? 'text-[#6200EE]' : 'text-slate-300'}>{settingsData.notif_due_date ? <ToggleRight size={44} /> : <ToggleLeft size={44} />}</button>
+                      <button onClick={() => setSettingsData({ ...settingsData, notif_due_date: !settingsData.notif_due_date })} className={settingsData.notif_due_date ? 'text-[#6200EE]' : 'text-slate-300'}>{settingsData.notif_due_date ? <ToggleRight size={44} /> : <ToggleLeft size={44} />}</button>
                     </div>
                     <button onClick={handleUpdateSettings} disabled={updating} className="w-full bg-[#6200EE] text-white font-black py-5 rounded-3xl hover:bg-[#5000C7] flex items-center justify-center gap-3 uppercase tracking-widest text-xs">{updating ? <Loader2 className="animate-spin" /> : t.save_notif}</button>
                   </div>
@@ -269,6 +268,32 @@ export default function Profile() {
                     <div className="p-6 bg-slate-900 rounded-[2.5rem] text-white space-y-2">
                       <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">{t.email_verified}</p>
                       <p className="text-lg font-black">{user?.email}</p>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100">
+                      <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Akses & Sandi</h4>
+                      <div className="flex flex-col md:flex-row gap-4">
+                        <button
+                          onClick={async () => {
+                            setUpdating(true);
+                            const { sendPasswordResetEmail } = await import('../utils/passwordReset');
+                            await sendPasswordResetEmail(
+                              user?.email || '',
+                              () => notify('Link reset password berhasil dikirim ke email Anda', 'success'),
+                              (err) => notify(err, 'error')
+                            );
+                            setUpdating(false);
+                          }}
+                          disabled={updating}
+                          className="flex-1 px-6 py-4 bg-white border border-slate-200 rounded-2xl flex items-center justify-center gap-3 hover:bg-slate-50 transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                        >
+                          {updating ? <Loader2 size={18} className="animate-spin text-[#6200EE]" /> : <RefreshCcw size={18} className="text-slate-400" />}
+                          <div className="text-left">
+                            <p className="text-xs font-black text-slate-700 uppercase">Reset Kata Sandi</p>
+                            <p className="text-[9px] font-bold text-slate-400">KIRIM LINK ATUR ULANG KE EMAIL</p>
+                          </div>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

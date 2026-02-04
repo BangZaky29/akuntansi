@@ -1,6 +1,14 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+export interface ReportSignature {
+    city: string;
+    date: string;
+    signatoryName: string;
+    signatureImage?: string; // base64
+    stampImage?: string;     // base64
+}
+
 interface ReportOptions {
     title: string;
     period: string;
@@ -9,6 +17,7 @@ interface ReportOptions {
     columns: string[];
     data: any[][];
     footer?: { label: string; value: string }[];
+    signature?: ReportSignature;
 }
 
 export const generatePDF = ({
@@ -18,7 +27,8 @@ export const generatePDF = ({
     orientation = 'portrait',
     columns,
     data,
-    footer
+    footer,
+    signature
 }: ReportOptions) => {
     const doc = new jsPDF(orientation, 'mm', 'a4');
     const pageWidth = doc.internal.pageSize.width;
@@ -128,6 +138,66 @@ export const generatePDF = ({
 
             currentY += 8;
         });
+    }
+
+    // --- Signature Section (Optional) ---
+    if (signature) {
+        // Increase offset to 35 to prevent overlap with table footer
+        let finalY = (doc as any).lastAutoTable.finalY + 35;
+        const blockWidth = 80;
+        const rightMargin = 15;
+        const startX = pageWidth - blockWidth - rightMargin;
+        const blockCenterX = startX + (blockWidth / 2);
+
+        // Check for page overflow
+        if (finalY > doc.internal.pageSize.height - 70) {
+            doc.addPage();
+            finalY = 30;
+        }
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(30);
+
+        // 1. "City, Date" (Top)
+        doc.text(`${signature.city}, ${signature.date}`, blockCenterX, finalY, { align: 'center' });
+
+        // 2. "Mengetahui," (Middle)
+        doc.text("Mengetahui,", blockCenterX, finalY + 7, { align: 'center' });
+
+        const sigY = finalY + 10;
+        const sigHeight = 25;
+
+        // 3. Signature & Stamp (Stamp first so it appears behind signature)
+        if (signature.stampImage) {
+            try {
+                // Stamp significantly overlapping with signature (startX + 22 creates tighter distance)
+                doc.addImage(signature.stampImage, 'PNG', startX + 22, sigY + 2, 35, 30);
+            } catch (e) {
+                console.error("Stamp image failed:", e);
+            }
+        }
+
+        if (signature.signatureImage) {
+            try {
+                // Signature on the left, drawn after stamp so it appears on top
+                doc.addImage(signature.signatureImage, 'PNG', startX + 5, sigY, 40, sigHeight);
+            } catch (e) {
+                console.error("Signature image failed:", e);
+            }
+        }
+
+        // 4. (Signatory Name) - Bold and Underlined
+        const nameY = sigY + sigHeight + 12;
+        doc.setFont('helvetica', 'bold');
+        const nameText = `( ${signature.signatoryName || '____________________'} )`;
+        doc.text(nameText, blockCenterX, nameY, { align: 'center' });
+
+        // Add underline under the name
+        const textWidth = doc.getTextWidth(nameText);
+        doc.setDrawColor(30);
+        doc.setLineWidth(0.5);
+        doc.line(blockCenterX - (textWidth / 2) + 2, nameY + 1, blockCenterX + (textWidth / 2) - 2, nameY + 1);
     }
 
     doc.save(`${fileName}_${Date.now()}.pdf`);

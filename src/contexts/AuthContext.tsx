@@ -45,11 +45,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for changes
     if (auth.onAuthStateChange) {
       const result = auth.onAuthStateChange((_event: string, session: any) => {
-        setSession(session);
-        setUser(session?.user ?? null);
+        setSession((prev: any) => {
+          if (prev?.access_token === session?.access_token) return prev;
+          return session;
+        });
+
+        const newUser = session?.user ?? null;
+        setUser((prev: any) => {
+          if (prev?.id === newUser?.id && prev?.email === newUser?.email) return prev;
+          return newUser;
+        });
+
         setLoading(false);
       });
-      
+
       const subscription = result?.data?.subscription || result?.subscription || result;
 
       return () => {

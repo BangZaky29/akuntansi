@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Receivables() {
   const { user } = useAuth();
-  const { notify } = useNotify();
+  const { notify, confirm } = useNotify();
   const [receivables, setReceivables] = useState<Receivable[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
@@ -163,7 +163,8 @@ export default function Receivables() {
   };
 
   const handleDelete = async (r: Receivable) => {
-    if (!confirm('Hapus piutang ini secara permanen?')) return;
+    const confirmed = await confirm('Hapus piutang ini secara permanen?', { type: 'danger' });
+    if (!confirmed) return;
     try {
       if (r.journal_id) {
         await supabase.from('journal_items').delete().eq('journal_id', r.journal_id);

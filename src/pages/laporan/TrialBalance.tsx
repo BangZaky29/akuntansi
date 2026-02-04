@@ -5,14 +5,14 @@ import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
-import { generatePDF } from '../../utils/pdfGenerator';
-import { useNotify } from '../../contexts/NotificationContext';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function TrialBalance() {
-  const { notify } = useNotify();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   useEffect(() => {
     fetchData();
@@ -48,7 +48,7 @@ export default function TrialBalance() {
       r.credit > 0 ? formatCurrency(r.credit) : '-'
     ]);
 
-    generatePDF({
+    handlePrintRequest({
       title: 'Neraca Saldo',
       period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
       fileName: 'neraca_saldo',
@@ -59,8 +59,6 @@ export default function TrialBalance() {
         { label: 'Total Kredit', value: formatCurrency(totalCredit) }
       ]
     });
-
-    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -133,6 +131,12 @@ export default function TrialBalance() {
         )}
       </main>
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div>
   );
 }

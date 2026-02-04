@@ -6,20 +6,22 @@ import { useSettings } from '../../contexts/SettingsContext';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { BookOpen, ChevronDown, Loader2, FileText, RefreshCw, Printer } from 'lucide-react';
-import { generatePDF } from '../../utils/pdfGenerator';
-import { useNotify } from '../../contexts/NotificationContext';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import { useAuth } from '../../contexts/AuthContext';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function Journal() {
-  const { notify } = useNotify();
+  const { user } = useAuth();
   const { fmtCurrency, fmtDate } = useSettings();
   const [journals, setJournals] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   useEffect(() => {
-    fetchJournals();
-  }, []);
+    if (user?.id) fetchJournals();
+  }, [user?.id]);
 
   const fetchJournals = async () => {
     setLoading(true);
@@ -52,19 +54,15 @@ export default function Journal() {
           Number(item.credit) > 0 ? fmtCurrency(Number(item.credit)) : '-'
         ]);
       });
-      // Tambahkan baris kosong atau pemisah antar jurnal jika perlu (opsional)
-      // tableData.push(['', '', '', '', '']); 
     });
 
-    generatePDF({
+    handlePrintRequest({
       title: 'Jurnal Umum',
       period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
       fileName: 'jurnal_umum',
       columns: ['Tanggal', 'Deskripsi/Keterangan', 'Akun', 'Debit', 'Kredit'],
       data: tableData,
     });
-
-    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -137,7 +135,13 @@ export default function Journal() {
                   </div>
                   <AnimatePresence>
                     {expanded === journal.id && (
-                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="border-t border-slate-100 bg-slate-50/30 p-4 md:p-6 overflow-x-auto">
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="border-t border-slate-100 bg-slate-50/30 p-4 md:p-6 overflow-x-auto"
+                      >
                         <table className="w-full text-sm">
                           <thead>
                             <tr className="text-slate-400 text-[9px] font-black uppercase tracking-[0.2em] border-b border-slate-100">
@@ -173,6 +177,12 @@ export default function Journal() {
         </div>
       </main>
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div>
   );
 }

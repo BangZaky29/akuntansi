@@ -6,12 +6,14 @@ import MobileNav from '../../components/MobileNav';
 import { Loader2, BarChart3, TrendingUp, UserCheck, ShieldCheck, Printer } from 'lucide-react';
 import { formatCurrency, calculateProfitLoss } from '../../utils/accounting';
 import type { JournalItem } from '../../types';
-import { generatePDF } from '../../utils/pdfGenerator';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function EquityChange() {
   const [items, setItems] = useState<JournalItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   useEffect(() => {
     supabase.from('journal_items').select('*, account:accounts(*)').then(({ data }) => {
@@ -28,7 +30,7 @@ export default function EquityChange() {
   const finalEquity = initialEquity + profitLoss;
 
   const handlePrint = () => {
-    generatePDF({
+    handlePrintRequest({
       title: 'Laporan Perubahan Modal',
       period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
       fileName: 'laporan_perubahan_modal',
@@ -71,7 +73,7 @@ export default function EquityChange() {
         </header>
 
         {loading ? <div className="flex justify-center py-20"><Loader2 className="animate-spin text-[#6200EE]" size={32} /></div> : (
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden p-8 md:p-12">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden p-6 md:p-12">
             <div className="text-center mb-12">
               <div className="w-20 h-20 bg-[#6200EE]/5 rounded-full flex items-center justify-center text-[#6200EE] mx-auto mb-6 shadow-inner">
                 <BarChart3 size={36} />
@@ -83,36 +85,38 @@ export default function EquityChange() {
               </div>
             </div>
 
-            <div className="space-y-2 max-w-lg mx-auto">
-              <div className="flex justify-between items-center py-5 border-b border-slate-100">
+            <div className="space-y-4 max-w-lg mx-auto">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-5 border-b border-slate-100 gap-2">
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-slate-50 rounded-lg"><UserCheck className="text-slate-500" size={18} /></div>
-                  <span className="text-slate-700 font-bold">Modal Awal / Setoran</span>
+                  <div className="p-2.5 bg-slate-50 rounded-xl flex-shrink-0"><UserCheck className="text-slate-500" size={18} /></div>
+                  <span className="text-slate-700 font-bold text-sm md:text-base">Modal Awal / Setoran</span>
                 </div>
-                <span className="font-bold text-slate-800 text-lg">{formatCurrency(initialEquity)}</span>
+                <span className="font-black text-slate-800 text-base md:text-lg sm:text-right pl-[52px] sm:pl-0">
+                  {formatCurrency(initialEquity)}
+                </span>
               </div>
 
-              <div className="flex justify-between items-center py-5 border-b border-slate-100">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-5 border-b border-slate-100 gap-2">
                 <div className="flex items-center gap-4">
-                  <div className={`p-2 rounded-lg ${profitLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+                  <div className={`p-2.5 rounded-xl flex-shrink-0 ${profitLoss >= 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
                     <TrendingUp className={profitLoss >= 0 ? 'text-emerald-500' : 'text-rose-500'} size={18} />
                   </div>
-                  <span className="text-slate-700 font-bold">{profitLoss >= 0 ? 'Laba Bersih' : 'Rugi Bersih'}</span>
+                  <span className="text-slate-700 font-bold text-sm md:text-base">{profitLoss >= 0 ? 'Laba Bersih' : 'Rugi Bersih'}</span>
                 </div>
-                <span className={`font-bold text-lg ${profitLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                <span className={`font-black text-base md:text-lg sm:text-right pl-[52px] sm:pl-0 ${profitLoss >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                   {profitLoss < 0 ? `(${formatCurrency(Math.abs(profitLoss))})` : formatCurrency(profitLoss)}
                 </span>
               </div>
 
-              <div className="pt-10">
-                <div className="relative p-8 bg-slate-900 rounded-3xl text-white shadow-2xl overflow-hidden group">
+              <div className="pt-8 md:pt-10">
+                <div className="relative p-6 md:p-10 bg-slate-900 rounded-3xl text-white shadow-2xl overflow-hidden group">
                   <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
                     <BarChart3 size={120} />
                   </div>
                   <div className="relative z-10">
                     <p className="text-slate-400 text-[10px] font-black uppercase tracking-[0.2em] mb-3">Saldo Modal Akhir</p>
                     <div className="flex items-baseline gap-1">
-                      <p className="text-4xl font-black tracking-tight">{formatCurrency(finalEquity)}</p>
+                      <p className="text-3xl md:text-5xl font-black tracking-tight">{formatCurrency(finalEquity)}</p>
                     </div>
                     <div className="mt-4 h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">
                       <div className="h-full bg-[#6200EE] rounded-full" style={{ width: '100%' }}></div>
@@ -132,6 +136,12 @@ export default function EquityChange() {
         )}
       </main>
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div>
   );
 }

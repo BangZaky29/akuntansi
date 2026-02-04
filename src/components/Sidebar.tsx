@@ -2,11 +2,11 @@
 import { useEffect, useState, useMemo } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  LayoutDashboard, 
-  BookOpen, 
-  PieChart, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  BookOpen,
+  PieChart,
+  LogOut,
   ArrowUpRight,
   ArrowDownLeft,
   Users,
@@ -22,7 +22,8 @@ import {
   Waves,
   X,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Menu
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useLayout } from '../contexts/LayoutContext';
@@ -33,9 +34,12 @@ import type { UserProfile } from '../types';
 export default function Sidebar() {
   const { signOut, user } = useAuth();
   const { t } = useSettings();
-  const { isSidebarOpen, setIsSidebarOpen } = useLayout();
+  const { isSidebarOpen, setIsSidebarOpen, isCollapsed, toggleCollapse } = useLayout();
   const location = useLocation();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(() => {
+    const cached = localStorage.getItem('user_profile');
+    return cached ? JSON.parse(cached) : null;
+  });
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
@@ -45,7 +49,10 @@ export default function Sidebar() {
         .eq('id', user.id)
         .maybeSingle()
         .then(({ data }) => {
-          if (data) setProfile(data);
+          if (data) {
+            setProfile(data);
+            localStorage.setItem('user_profile', JSON.stringify(data));
+          }
         });
     }
   }, [user]);
@@ -90,63 +97,135 @@ export default function Sidebar() {
   ], [t]);
 
   const SidebarContent = () => (
-    <div className="flex flex-col w-72 bg-white border-r border-slate-200 h-full overflow-hidden">
-      <div className="p-6 bg-[#6200EE] text-white">
-        <div className="flex items-center justify-between mb-2">
+    <motion.div
+      initial={false}
+      animate={{ width: isCollapsed ? 80 : 288 }}
+      transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+      className="flex flex-col bg-white border-r border-slate-200 h-full overflow-hidden select-none"
+    >
+      <div className={`p-4 bg-[#6200EE] text-white overflow-hidden transition-all duration-300 ${isCollapsed ? 'flex flex-col items-center gap-4' : ''}`}>
+        <div className="flex items-center justify-between w-full">
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm shrink-0">
+            <div className={`w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md shrink-0 border border-white/10 shadow-sm ${isCollapsed ? 'mx-auto' : ''}`}>
               <Building2 size={20} />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="font-bold text-sm leading-tight truncate">
-                {profile?.business_name || 'Bisnis Anda'}
-              </h2>
-              <p className="text-[10px] text-white/70 uppercase tracking-widest truncate">
-                {profile?.city || 'Sistem Akuntansi'}
-              </p>
-            </div>
+            <AnimatePresence>
+              {!isCollapsed && (
+                <motion.div
+                  key="profile-info"
+                  initial={false}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -10 }}
+                  transition={{ duration: 0.2 }}
+                  className="min-w-0 flex-1"
+                >
+                  <h2 className="font-bold text-sm leading-tight truncate">
+                    {profile?.business_name || (
+                      <div className="h-4 w-32 bg-white/20 rounded animate-pulse" />
+                    )}
+                  </h2>
+                  <p className="text-[10px] text-white/70 uppercase tracking-widest truncate font-medium">
+                    {profile?.city || (
+                      <div className="h-3 w-20 bg-white/10 rounded animate-pulse mt-1" />
+                    )}
+                  </p>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
-          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-white/80">
+
+          {!isCollapsed && (
+            <button
+              onClick={toggleCollapse}
+              className="hidden md:flex text-white/60 hover:text-white hover:bg-white/10 transition-all p-2 rounded-lg"
+              title="Collapse Sidebar"
+            >
+              <Menu size={20} />
+            </button>
+          )}
+
+          <button onClick={() => setIsSidebarOpen(false)} className="md:hidden text-white/80 p-1">
             <X size={20} />
           </button>
         </div>
+
+        {isCollapsed && (
+          <button
+            onClick={toggleCollapse}
+            className="hidden md:flex text-white/60 hover:text-white hover:bg-white/10 transition-all p-2 rounded-lg"
+            title="Expand Sidebar"
+          >
+            <Menu size={20} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6 scrollbar-hide pb-2">
         <NavLink
           to="/dashboard"
-          className={({ isActive }) => 
-            `flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all ${
-              isActive && location.pathname === '/dashboard'
-              ? 'bg-[#6200EE]/10 text-[#6200EE] font-bold' 
+          className={({ isActive }) =>
+            `flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isCollapsed ? 'justify-center px-0' : 'mx-0'} ${isActive && location.pathname === '/dashboard'
+              ? 'bg-[#6200EE]/10 text-[#6200EE] font-bold shadow-sm shadow-[#6200EE]/5'
               : 'text-slate-500 hover:bg-slate-50'
             }`
           }
         >
-          <LayoutDashboard size={18} />
-          <span className="text-sm">{t.nav_dashboard}</span>
+          <div className={`flex items-center justify-center ${isCollapsed ? 'w-10' : ''}`}>
+            <LayoutDashboard size={isCollapsed ? 22 : 18} />
+          </div>
+          <AnimatePresence>
+            {!isCollapsed && (
+              <motion.span
+                initial={false}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="text-sm whitespace-nowrap"
+              >
+                {t.nav_dashboard}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </NavLink>
 
         {menuGroups.map((group) => (
           <div key={group.title} className="space-y-1">
-            <p className="text-[10px] font-black text-slate-400 px-4 mb-2 tracking-widest uppercase">{group.title}</p>
+            {!isCollapsed && (
+              <motion.p
+                initial={false}
+                animate={{ opacity: 1 }}
+                className="text-[10px] font-black text-slate-400 px-4 mb-2 tracking-widest uppercase"
+              >
+                {group.title}
+              </motion.p>
+            )}
             {group.items.map((item) => {
               const isActive = location.pathname + location.search === item.path;
               return (
                 <NavLink
                   key={item.label}
                   to={item.path}
-                  className={`flex items-center justify-between px-4 py-2 rounded-xl transition-all group ${
-                    isActive 
-                    ? 'text-[#6200EE] font-black bg-[#6200EE]/5' 
+                  title={isCollapsed ? item.label : ''}
+                  className={`flex items-center justify-between px-4 py-2.5 rounded-xl transition-all group ${isCollapsed ? 'justify-center px-0' : ''} ${isActive
+                    ? 'text-[#6200EE] font-black bg-[#6200EE]/5'
                     : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 font-bold'
-                  }`}
+                    }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <item.icon size={16} className={isActive ? 'text-[#6200EE]' : 'text-slate-400'} />
-                    <span className="text-[13px]">{item.label}</span>
+                  <div className={`flex items-center ${isCollapsed ? 'gap-0 w-10 justify-center' : 'gap-3'}`}>
+                    <item.icon size={isCollapsed ? 21 : 18} className={isActive ? 'text-[#6200EE]' : 'text-slate-400 group-hover:text-slate-600 transition-colors'} />
+                    <AnimatePresence>
+                      {!isCollapsed && (
+                        <motion.span
+                          initial={false}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: -10 }}
+                          className="text-[13px] whitespace-nowrap"
+                        >
+                          {item.label}
+                        </motion.span>
+                      )}
+                    </AnimatePresence>
                   </div>
-                  <ChevronRight size={12} className={isActive ? 'opacity-100' : 'opacity-0'} />
+                  {!isCollapsed && <ChevronRight size={12} className={isActive ? 'opacity-100' : 'opacity-0'} />}
                 </NavLink>
               );
             })}
@@ -154,29 +233,56 @@ export default function Sidebar() {
         ))}
       </div>
 
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50 space-y-1">
+      <div className={`p-4 border-t border-slate-100 bg-slate-50/50 space-y-1 ${isCollapsed ? 'px-0 flex flex-col items-center' : ''}`}>
         <NavLink
           to="/profile"
-          className={({ isActive }) => 
-            `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group font-bold ${
-              isActive 
-              ? 'bg-[#6200EE]/10 text-[#6200EE]' 
+          title={isCollapsed ? t.nav_profile : ''}
+          className={({ isActive }) =>
+            `w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all group font-bold ${isCollapsed ? 'justify-center px-0' : ''} ${isActive
+              ? 'bg-[#6200EE]/10 text-[#6200EE]'
               : 'text-slate-600 hover:bg-slate-50'
             }`
           }
         >
-          <User size={18} className={location.pathname === '/profile' ? 'text-[#6200EE]' : 'text-slate-400'} />
-          <span className="text-sm">{t.nav_profile}</span>
+          <div className={`flex items-center justify-center ${isCollapsed ? 'w-10' : ''}`}>
+            <User size={isCollapsed ? 22 : 18} className={location.pathname === '/profile' ? 'text-[#6200EE]' : 'text-slate-400'} />
+          </div>
+          <AnimatePresence>
+            {!isCollapsed && (
+              <motion.span
+                initial={false}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="text-sm border-none whitespace-nowrap"
+              >
+                {t.nav_profile}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </NavLink>
-        <button 
-          onClick={() => setShowLogoutConfirm(true)} 
-          className="w-full flex items-center gap-3 px-4 py-3 text-rose-600 hover:bg-rose-50 rounded-xl transition-all group font-bold"
+        <button
+          onClick={() => setShowLogoutConfirm(true)}
+          title={isCollapsed ? t.nav_logout : ''}
+          className={`w-full flex items-center gap-3 px-4 py-3 text-rose-600 hover:bg-rose-50 rounded-xl transition-all group font-bold ${isCollapsed ? 'justify-center px-0' : ''}`}
         >
-          <LogOut size={18} />
-          <span className="text-sm">{t.nav_logout}</span>
+          <div className={`flex items-center justify-center ${isCollapsed ? 'w-10' : ''}`}>
+            <LogOut size={isCollapsed ? 22 : 18} />
+          </div>
+          <AnimatePresence>
+            {!isCollapsed && (
+              <motion.span
+                initial={false}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                className="text-sm whitespace-nowrap"
+              >
+                {t.nav_logout}
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
       </div>
-    </div>
+    </motion.div>
   );
 
   return (

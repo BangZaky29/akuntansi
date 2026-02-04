@@ -12,22 +12,22 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function Payables() {
   const { user } = useAuth();
-  const { notify } = useNotify();
+  const { notify, confirm } = useNotify();
   const [payables, setPayables] = useState<Payable[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  
+
   const [formData, setFormData] = useState({
-    id: '', 
-    journal_id: '', 
-    amount: '', 
-    description: '', 
-    date: new Date().toISOString().split('T')[0], 
+    id: '',
+    journal_id: '',
+    amount: '',
+    description: '',
+    date: new Date().toISOString().split('T')[0],
     due_date: '',
     status: 'unpaid' as 'unpaid' | 'paid',
     payableAccountId: '',
@@ -48,13 +48,13 @@ export default function Payables() {
 
       if (payRes.error) throw payRes.error;
       setPayables(payRes.data as unknown as Payable[]);
-      
+
       const allAccs = accRes.data || [];
       setAccounts(allAccs);
 
       const defPay = allAccs.find(a => a.type === 'kewajiban' && a.name.toLowerCase().includes('hutang'))?.id || '';
       const defTarget = allAccs.find(a => a.type === 'beban')?.id || '';
-      
+
       setFormData(prev => ({
         ...prev,
         payableAccountId: defPay,
@@ -81,7 +81,7 @@ export default function Payables() {
         await supabase.from('journals').update({ description: formData.description, date: formData.date }).eq('id', formData.journal_id);
         await supabase.from('payables').update({ amount, status: formData.status, due_date: formData.due_date || null }).eq('id', formData.id);
         await supabase.from('journal_items').delete().eq('journal_id', formData.journal_id);
-        
+
         await supabase.from('journal_items').insert([
           { journal_id: formData.journal_id, account_id: formData.targetAccountId, debit: amount, credit: 0 },
           { journal_id: formData.journal_id, account_id: formData.payableAccountId, debit: 0, credit: amount }
@@ -115,7 +115,8 @@ export default function Payables() {
   };
 
   const handleDelete = async (p: Payable) => {
-    if (!confirm('Hapus hutang ini?')) return;
+    const confirmed = await confirm('Hapus hutang ini?', { type: 'danger' });
+    if (!confirmed) return;
     try {
       if (p.journal_id) {
         await supabase.from('journal_items').delete().eq('journal_id', p.journal_id);
@@ -144,13 +145,13 @@ export default function Payables() {
           <div className="flex gap-2">
             <div className="relative flex-1 md:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input 
-                type="text" placeholder="Cari hutang..." 
+              <input
+                type="text" placeholder="Cari hutang..."
                 className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl outline-none text-sm font-bold shadow-sm"
                 value={searchTerm} onChange={e => setSearchTerm(e.target.value)}
               />
             </div>
-            <button 
+            <button
               onClick={() => { setIsEditing(false); setShowModal(true); }}
               className="bg-rose-600 text-white px-5 py-2 rounded-xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-rose-100 active:scale-95 transition-all"
             >
@@ -168,20 +169,20 @@ export default function Payables() {
                     {p.status === 'paid' ? <CheckCircle size={24} /> : <Clock size={24} />}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => { 
-                      setFormData({ 
-                        id: p.id, 
-                        journal_id: p.journal_id, 
-                        amount: p.amount.toString(), 
-                        description: p.journal?.description || '', 
-                        date: p.journal?.date || '', 
+                    <button onClick={() => {
+                      setFormData({
+                        id: p.id,
+                        journal_id: p.journal_id,
+                        amount: p.amount.toString(),
+                        description: p.journal?.description || '',
+                        date: p.journal?.date || '',
                         due_date: p.due_date || '',
                         status: p.status,
                         payableAccountId: accounts.find(a => a.type === 'kewajiban' && a.name.toLowerCase().includes('hutang'))?.id || '',
                         targetAccountId: accounts.find(a => a.type === 'beban')?.id || ''
-                      }); 
-                      setIsEditing(true); 
-                      setShowModal(true); 
+                      });
+                      setIsEditing(true);
+                      setShowModal(true);
                     }} className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"><Edit3 size={18} /></button>
                     <button onClick={() => handleDelete(p)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-rose-50 rounded-xl transition-colors"><Trash2 size={18} /></button>
                   </div>
@@ -218,26 +219,26 @@ export default function Payables() {
               <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative bg-white w-full max-w-lg rounded-[3rem] shadow-2xl p-8 md:p-10">
                 <h2 className="text-2xl font-black mb-8 text-slate-800 tracking-tight">{isEditing ? 'Ubah Hutang' : 'Catat Hutang'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-6">
-                  
+
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Pemberi Hutang / Keterangan</label>
-                    <input type="text" placeholder="Misal: Hutang Pembelian Laptop PT. XYZ" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold focus:border-rose-600/20 transition-all" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                    <input type="text" placeholder="Misal: Hutang Pembelian Laptop PT. XYZ" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold focus:border-rose-600/20 transition-all" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tanggal Jurnal</label>
-                      <input type="date" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} />
+                      <input type="date" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Tgl Jatuh Tempo</label>
-                      <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.due_date} onChange={e => setFormData({...formData, due_date: e.target.value})} />
+                      <input type="date" className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold" value={formData.due_date} onChange={e => setFormData({ ...formData, due_date: e.target.value })} />
                     </div>
                   </div>
 
                   <div className="space-y-2">
                     <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Akun Hutang (Kredit)</label>
-                    <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.payableAccountId} onChange={e => setFormData({...formData, payableAccountId: e.target.value})}>
+                    <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.payableAccountId} onChange={e => setFormData({ ...formData, payableAccountId: e.target.value })}>
                       <option value="">Pilih Akun Hutang</option>
                       {liabilityAccounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
@@ -246,14 +247,14 @@ export default function Payables() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Akun Beban/Aset (Debit)</label>
-                      <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.targetAccountId} onChange={e => setFormData({...formData, targetAccountId: e.target.value})}>
+                      <select required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-bold appearance-none cursor-pointer pr-10" value={formData.targetAccountId} onChange={e => setFormData({ ...formData, targetAccountId: e.target.value })}>
                         <option value="">Pilih Tujuan Biaya</option>
                         {targetAccounts.map(a => <option key={a.id} value={a.id}>{a.name} ({a.type})</option>)}
                       </select>
                     </div>
                     <div className="space-y-2">
                       <label className="text-[10px] font-black text-slate-400 uppercase ml-2 tracking-widest">Jumlah Hutang (Rp)</label>
-                      <input type="number" placeholder="0" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-black text-lg text-rose-600" value={formData.amount} onChange={e => setFormData({...formData, amount: e.target.value})} />
+                      <input type="number" placeholder="0" required className="w-full bg-slate-50 p-4 rounded-2xl outline-none border border-slate-100 font-black text-lg text-rose-600" value={formData.amount} onChange={e => setFormData({ ...formData, amount: e.target.value })} />
                     </div>
                   </div>
 

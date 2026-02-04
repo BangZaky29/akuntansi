@@ -6,17 +6,19 @@ import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Waves, ArrowUpCircle, ArrowDownCircle, Info, Printer } from 'lucide-react';
 import { formatCurrency } from '../../utils/accounting';
-import { generatePDF } from '../../utils/pdfGenerator';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function CashFlow() {
   const { user } = useAuth(); // Add useAuth to get user_id
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   useEffect(() => {
     if (user?.id) fetchCashFlow();
-  }, [user]);
+  }, [user?.id]);
 
   const fetchCashFlow = async () => {
     try {
@@ -45,7 +47,7 @@ export default function CashFlow() {
       item.credit > 0 ? formatCurrency(item.credit) : '-'
     ]);
 
-    generatePDF({
+    handlePrintRequest({
       title: 'Laporan Arus Kas',
       period: new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' }),
       fileName: 'laporan_arus_kas',
@@ -157,6 +159,12 @@ export default function CashFlow() {
         )}
       </main>
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div>
   );
 }

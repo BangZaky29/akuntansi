@@ -7,15 +7,15 @@ import { formatCurrency } from '../../utils/accounting';
 import Sidebar from '../../components/Sidebar';
 import MobileNav from '../../components/MobileNav';
 import { Loader2, Printer } from 'lucide-react';
-import { generatePDF } from '../../utils/pdfGenerator';
-import { useNotify } from '../../contexts/NotificationContext';
 import CopyToClipboardButton from '../../components/CopyToClipboardButton';
+import { useReportPrint } from '../../hooks/useReportPrint';
+import ReportSignatureModal from '../../components/ReportSignatureModal';
 
 export default function Reports() {
-  const { notify } = useNotify();
   const [searchParams] = useSearchParams();
   const [items, setItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { isModalOpen, setIsModalOpen, handlePrintRequest, confirmPrint, skipSignature } = useReportPrint();
 
   const activeTab = (searchParams.get('type') as 'profit-loss' | 'balance-sheet') || 'profit-loss';
 
@@ -101,7 +101,7 @@ export default function Reports() {
       ];
     }
 
-    generatePDF({
+    handlePrintRequest({
       title,
       period,
       fileName: title.toLowerCase().replace(/\s+/g, '_'),
@@ -109,8 +109,6 @@ export default function Reports() {
       data: rows,
       footer
     });
-
-    notify('Laporan berhasil diunduh', 'success');
   };
 
   return (
@@ -250,6 +248,12 @@ export default function Reports() {
         )}
       </main>
       <MobileNav />
+      <ReportSignatureModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={confirmPrint}
+        onSkip={skipSignature}
+      />
     </div>
   );
 }

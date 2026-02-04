@@ -25,8 +25,8 @@ export default function InitialBalance() {
   const [isUnlocked, setIsUnlocked] = useState(false);
 
   useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
+    if (user?.id) fetchData();
+  }, [user?.id]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -194,12 +194,7 @@ export default function InitialBalance() {
 
   const isInputDisabled = !!existingJournalId && !isUnlocked;
 
-  if (loading) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
-      <Loader2 className="animate-spin text-[#6200EE] mb-4" size={40} />
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sinkronisasi Data...</p>
-    </div>
-  );
+  // No full-screen loader here anymore, handled inline below
 
   return (
     <div className="flex min-h-screen bg-slate-50 relative">
@@ -289,118 +284,129 @@ export default function InitialBalance() {
       )}
 
       <main className="flex-1 p-4 md:p-6 md:pb-6 pb-24 max-w-5xl mx-auto w-full">
-        <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Saldo Awal</h1>
-            <p className="text-slate-500 text-sm font-medium">Input posisi keuangan pembuka usaha Anda</p>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-32 bg-white rounded-[3rem] border border-slate-100 mb-8">
+            <Loader2 className="animate-spin text-[#6200EE] mb-4" size={40} />
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Sinkronisasi Data...</p>
           </div>
-          <div className="flex gap-3">
-            <button onClick={fetchData} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-[#6200EE] transition-all">
-              <RefreshCcw size={18} />
-            </button>
+        ) : (
+          <>
+            <header className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Saldo Awal</h1>
+                <p className="text-slate-500 text-sm font-medium">Input posisi keuangan pembuka usaha Anda</p>
+              </div>
+              <div className="flex gap-3">
+                <button onClick={fetchData} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-400 hover:text-[#6200EE] transition-all">
+                  <RefreshCcw size={18} />
+                </button>
 
-            {existingJournalId && !isUnlocked ? (
-              <button
-                onClick={handleUnlockRequest}
-                className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all"
-              >
-                <ShieldCheck size={16} />
-                Edit Saldo
-              </button>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={saving || !isBalanced || (!!existingJournalId && !isUnlocked)}
-                className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl transition-all disabled:opacity-50 disabled:grayscale ${'bg-[#6200EE] hover:bg-[#5000C7] text-white shadow-purple-200 active:scale-95'
-                  }`}
-              >
-                {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                {existingJournalId ? 'Update Saldo' : 'Simpan Saldo'}
-              </button>
+                {existingJournalId && !isUnlocked ? (
+                  <button
+                    onClick={handleUnlockRequest}
+                    className="px-6 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 bg-amber-100 text-amber-600 hover:bg-amber-200 transition-all"
+                  >
+                    <ShieldCheck size={16} />
+                    Edit Saldo
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSave}
+                    disabled={saving || !isBalanced || (!!existingJournalId && !isUnlocked)}
+                    className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-xl transition-all disabled:opacity-50 disabled:grayscale ${'bg-[#6200EE] hover:bg-[#5000C7] text-white shadow-purple-200 active:scale-95'
+                      }`}
+                  >
+                    {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                    {existingJournalId ? 'Update Saldo' : 'Simpan Saldo'}
+                  </button>
+                )}
+              </div>
+            </header>
+
+            {existingJournalId && !isUnlocked && (
+              <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+                <div className="bg-amber-100 p-2 rounded-full text-amber-600">
+                  <AlertTriangle size={20} />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-amber-900">Saldo Awal Terkunci</h3>
+                  <p className="text-xs text-amber-700">Sesuai kaidah akuntansi, saldo awal yang sudah diposting tidak dapat diedit. Gunakan tombol Edit untuk membuka kunci.</p>
+                </div>
+              </div>
             )}
-          </div>
-        </header>
 
-        {existingJournalId && !isUnlocked && (
-          <div className="mb-8 p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
-            <div className="bg-amber-100 p-2 rounded-full text-amber-600">
-              <AlertTriangle size={20} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-amber-900">Saldo Awal Terkunci</h3>
-              <p className="text-xs text-amber-700">Sesuai kaidah akuntansi, saldo awal yang sudah diposting tidak dapat diedit. Gunakan tombol Edit untuk membuka kunci.</p>
-            </div>
-          </div>
-        )}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              <div className="lg:col-span-2 bg-blue-50 border border-blue-100 p-5 rounded-3xl flex gap-4">
+                <div className="flex flex-col md:flex-row gap-4 items-start">
+                  <Info className="text-blue-500 shrink-0" size={24} />
+                  <div className="text-xs text-blue-800 font-medium leading-relaxed">
+                    <p className="mb-2">Saldo awal adalah angka pembuka saat Anda mulai menggunakan sistem.</p>
+                    <p><strong>PENTING:</strong> Total akun Aset + Beban harus sama dengan total Modal + Hutang + Pendapatan agar seimbang.</p>
+                  </div>
+                </div>
+              </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <div className="lg:col-span-2 bg-blue-50 border border-blue-100 p-5 rounded-3xl flex gap-4">
-            <Info className="text-blue-500 shrink-0" size={24} />
-            <div className="text-xs text-blue-800 font-medium leading-relaxed">
-              <p className="mb-2">Saldo awal adalah angka pembuka saat Anda mulai menggunakan sistem.</p>
-              <p><strong>PENTING:</strong> Total akun Aset + Beban harus sama dengan total Modal + Hutang + Pendapatan agar seimbang.</p>
+              <div className={`p-5 rounded-3xl border flex flex-col justify-center ${isBalanced ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status Balance</span>
+                  {isBalanced ? <CheckCircle2 className="text-emerald-500" size={16} /> : <AlertTriangle className="text-rose-500" size={16} />}
+                </div>
+                <div className="flex justify-between text-xs font-bold mb-1">
+                  <span className="text-slate-500">Total Debit:</span>
+                  <span className="text-slate-800">{formatCurrency(totalDebit)}</span>
+                </div>
+                <div className="flex justify-between text-xs font-bold mb-3">
+                  <span className="text-slate-500">Total Kredit:</span>
+                  <span className="text-slate-800">{formatCurrency(totalCredit)}</span>
+                </div>
+                <div className={`text-center py-2 rounded-xl text-[10px] font-black uppercase ${isBalanced ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                  {isBalanced ? 'SUDAH SEIMBANG' : `SELISIH: ${formatCurrency(diff)}`}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className={`p-5 rounded-3xl border flex flex-col justify-center ${isBalanced ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Status Balance</span>
-              {isBalanced ? <CheckCircle2 className="text-emerald-500" size={16} /> : <AlertTriangle className="text-rose-500" size={16} />}
-            </div>
-            <div className="flex justify-between text-xs font-bold mb-1">
-              <span className="text-slate-500">Total Debit:</span>
-              <span className="text-slate-800">{formatCurrency(totalDebit)}</span>
-            </div>
-            <div className="flex justify-between text-xs font-bold mb-3">
-              <span className="text-slate-500">Total Kredit:</span>
-              <span className="text-slate-800">{formatCurrency(totalCredit)}</span>
-            </div>
-            <div className={`text-center py-2 rounded-xl text-[10px] font-black uppercase ${isBalanced ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
-              {isBalanced ? 'SUDAH SEIMBANG' : `SELISIH: ${formatCurrency(diff)}`}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50/50 border-b border-slate-100">
-                <tr>
-                  <th className="px-8 py-5 text-left font-black text-slate-400 uppercase text-[10px] tracking-widest">Nama Akun</th>
-                  <th className="px-8 py-5 text-left font-black text-slate-400 uppercase text-[10px] tracking-widest">Tipe Kelompok</th>
-                  <th className="px-8 py-5 text-right font-black text-slate-400 uppercase text-[10px] tracking-widest w-64">Nilai Saldo (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-50">
-                {accounts.map(acc => {
-                  const isDebit = acc.type === 'aset' || acc.type === 'beban';
-                  return (
-                    <tr key={acc.id} className="hover:bg-slate-50/30 transition-colors">
-                      <td className="px-8 py-4 font-bold text-slate-700">{acc.name}</td>
-                      <td className="px-8 py-4">
-                        <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${isDebit ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
-                          {acc.type}
-                        </span>
-                      </td>
-                      <td className="px-8 py-3">
-                        <input
-                          type="number"
-                          disabled={isInputDisabled}
-                          className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-right font-black outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${balances[acc.id] > 0 ? 'text-[#6200EE]' : 'text-slate-300'}`}
-                          placeholder="0"
-                          value={balances[acc.id] || ''}
-                          onChange={e => setBalances({ ...balances, [acc.id]: Number(e.target.value) })}
-                        />
-                      </td>
+            <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+              <div className="overflow-x-auto custom-scrollbar">
+                <table className="w-full text-sm min-w-[600px]">
+                  <thead className="bg-slate-50/50 border-b border-slate-100">
+                    <tr>
+                      <th className="px-5 md:px-8 py-5 text-left font-black text-slate-400 uppercase text-[10px] tracking-widest">Nama Akun</th>
+                      <th className="px-5 md:px-8 py-5 text-left font-black text-slate-400 uppercase text-[10px] tracking-widest w-32">Tipe</th>
+                      <th className="px-5 md:px-8 py-5 text-right font-black text-slate-400 uppercase text-[10px] tracking-widest w-48 md:w-64">Nilai Saldo (Rp)</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {accounts.map(acc => {
+                      const isDebit = acc.type === 'aset' || acc.type === 'beban';
+                      return (
+                        <tr key={acc.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-5 md:px-8 py-4 font-bold text-slate-700">{acc.name}</td>
+                          <td className="px-5 md:px-8 py-4">
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${isDebit ? 'bg-blue-50 text-blue-600' : 'bg-amber-50 text-amber-600'}`}>
+                              {acc.type}
+                            </span>
+                          </td>
+                          <td className="px-5 md:px-8 py-3">
+                            <input
+                              type="number"
+                              disabled={isInputDisabled}
+                              className={`w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-right font-black outline-none focus:ring-4 focus:ring-purple-500/5 focus:border-[#6200EE] transition-all disabled:opacity-50 disabled:cursor-not-allowed ${balances[acc.id] > 0 ? 'text-[#6200EE]' : 'text-slate-300'}`}
+                              placeholder="0"
+                              value={balances[acc.id] || ''}
+                              onChange={e => setBalances({ ...balances, [acc.id]: Number(e.target.value) })}
+                            />
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
       </main>
       <MobileNav />
-    </div>
+    </div >
   );
 }

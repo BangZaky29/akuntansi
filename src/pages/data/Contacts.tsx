@@ -10,23 +10,23 @@ import type { Contact } from '../../types';
 
 export default function Contacts() {
   const { user } = useAuth();
-  const { notify } = useNotify();
+  const { notify, confirm } = useNotify();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [tableError, setTableError] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', phone: '', type: 'pelanggan' as any, address: '' });
 
-  useEffect(() => { 
-    if (user) fetchContacts(); 
-  }, [user]);
+  useEffect(() => {
+    if (user?.id) fetchContacts();
+  }, [user?.id]);
 
   const fetchContacts = async () => {
     setLoading(true);
     setTableError(false);
     try {
       const { data, error } = await supabase.from('contacts').select('*').order('name');
-      
+
       if (error) {
         // PGRST205: Table not found
         if (error.code === 'PGRST205' || error.message?.includes('not find')) {
@@ -36,13 +36,13 @@ export default function Contacts() {
         }
         throw error;
       }
-      
+
       setContacts(data || []);
     } catch (err: any) {
       console.error('Fetch error:', err);
       notify('Gagal memuat kontak: ' + (err.message || 'Error tidak dikenal'), 'error');
-    } finally { 
-      setLoading(false); 
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -57,26 +57,27 @@ export default function Contacts() {
     try {
       const { error } = await supabase.from('contacts').insert([{ ...form, user_id: user.id }]);
       if (error) throw error;
-      
+
       setForm({ name: '', email: '', phone: '', type: 'pelanggan', address: '' });
       await fetchContacts();
       notify('Kontak berhasil ditambahkan', 'success');
-    } catch (err: any) { 
-      notify('Gagal menambah kontak. Pastikan tabel sudah dibuat.', 'error'); 
-    } finally { 
-      setSubmitting(false); 
+    } catch (err: any) {
+      notify('Gagal menambah kontak. Pastikan tabel sudah dibuat.', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const deleteContact = async (id: string) => {
-    if (!confirm('Hapus kontak ini?')) return;
+    const confirmed = await confirm('Hapus kontak ini?', { type: 'danger' });
+    if (!confirmed) return;
     try {
       const { error } = await supabase.from('contacts').delete().eq('id', id);
       if (error) throw error;
       setContacts(contacts.filter(c => c.id !== id));
       notify('Kontak dihapus', 'info');
-    } catch (err) { 
-      notify('Gagal menghapus kontak', 'error'); 
+    } catch (err) {
+      notify('Gagal menghapus kontak', 'error');
     }
   };
 
@@ -105,43 +106,43 @@ export default function Contacts() {
           <section className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm h-fit">
             <h3 className="font-bold text-slate-800 mb-6">Tambah Kontak</h3>
             <form onSubmit={handleSubmit} className="space-y-4">
-              <input 
+              <input
                 type="text" placeholder="Nama Lengkap" required
                 disabled={tableError}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-[#6200EE]/10 disabled:opacity-50"
-                value={form.name} onChange={e => setForm({...form, name: e.target.value})}
+                value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
               />
               <div className="grid grid-cols-2 gap-3">
-                <select 
+                <select
                   disabled={tableError}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none disabled:opacity-50"
-                  value={form.type} onChange={e => setForm({...form, type: e.target.value as any})}
+                  value={form.type} onChange={e => setForm({ ...form, type: e.target.value as any })}
                 >
                   <option value="pelanggan">Pelanggan</option>
                   <option value="vendor">Vendor</option>
                   <option value="lainnya">Lainnya</option>
                 </select>
-                <input 
+                <input
                   type="text" placeholder="Telepon"
                   disabled={tableError}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none disabled:opacity-50"
-                  value={form.phone} onChange={e => setForm({...form, phone: e.target.value})}
+                  value={form.phone} onChange={e => setForm({ ...form, phone: e.target.value })}
                 />
               </div>
-              <input 
+              <input
                 type="email" placeholder="Email (Opsional)"
                 disabled={tableError}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none disabled:opacity-50"
-                value={form.email} onChange={e => setForm({...form, email: e.target.value})}
+                value={form.email} onChange={e => setForm({ ...form, email: e.target.value })}
               />
-              <textarea 
+              <textarea
                 placeholder="Alamat Lengkap"
                 disabled={tableError}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none min-h-[80px] disabled:opacity-50"
-                value={form.address} onChange={e => setForm({...form, address: e.target.value})}
+                value={form.address} onChange={e => setForm({ ...form, address: e.target.value })}
               />
-              <button 
-                disabled={submitting || tableError} 
+              <button
+                disabled={submitting || tableError}
                 className="w-full bg-[#6200EE] text-white font-bold py-3 rounded-xl hover:bg-[#5000C7] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {submitting ? <Loader2 className="animate-spin" /> : <><Plus size={18} /> Simpan Kontak</>}
@@ -150,7 +151,7 @@ export default function Contacts() {
           </section>
 
           <section className="lg:col-span-2 space-y-4">
-            {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#6200EE]" /></div> : 
+            {loading ? <div className="flex justify-center py-10"><Loader2 className="animate-spin text-[#6200EE]" /></div> :
               contacts.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {contacts.map(contact => (

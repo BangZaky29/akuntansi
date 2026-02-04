@@ -60,11 +60,11 @@ export default function Dashboard() {
   const [activeChart, setActiveChart] = useState<'balance' | 'trend'>('balance');
 
   useEffect(() => {
-    if (user) {
+    if (user?.id) {
       fetchData();
       setChartReady(true);
     }
-  }, [user]);
+  }, [user?.id]);
 
   const fetchData = async () => {
     setRefreshing(true);
@@ -280,7 +280,13 @@ export default function Dashboard() {
                             contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 10px 30px rgba(0,0,0,0.05)' }}
                             formatter={(v: any) => fmtCurrency(v)}
                           />
-                          <Bar dataKey="value" radius={[12, 12, 12, 12]} barSize={40}>
+                          <Bar
+                            dataKey="value"
+                            radius={[12, 12, 12, 12]}
+                            barSize={40}
+                            animationDuration={1500}
+                            animationEasing="ease-in-out"
+                          >
                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                           </Bar>
                         </BarChart>
@@ -311,8 +317,28 @@ export default function Dashboard() {
                           contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}
                           formatter={(value: number | string | undefined) => fmtCurrency(Number(value) || 0)}
                         />
-                        <Area type="monotone" dataKey="pendapatan" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorIncome)" name={t.nav_income || "Pendapatan"} />
-                        <Area type="monotone" dataKey="beban" stroke="#f43f5e" strokeWidth={3} fillOpacity={1} fill="url(#colorExpense)" name={t.nav_expense || "Beban"} />
+                        <Area
+                          type="monotone"
+                          dataKey="pendapatan"
+                          stroke="#10b981"
+                          strokeWidth={3}
+                          fillOpacity={1}
+                          fill="url(#colorIncome)"
+                          name={t.nav_income || "Pendapatan"}
+                          animationDuration={2000}
+                          animationEasing="ease-in-out"
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="beban"
+                          stroke="#f43f5e"
+                          strokeWidth={3}
+                          fillOpacity={1}
+                          fill="url(#colorExpense)"
+                          name={t.nav_expense || "Beban"}
+                          animationDuration={2500}
+                          animationEasing="ease-in-out"
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   )}
