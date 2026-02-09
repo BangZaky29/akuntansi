@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
+import SubscriptionGuard from './components/SubscriptionGuard';
 
 // Root Pages
 import Login from './pages/Login';
@@ -40,42 +41,46 @@ import EquityChange from './pages/laporan/EquityChange';
 export default function App() {
   return (
     <AuthProvider>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/verification-success" element={<VerificationSuccess />} />
+      {/* 🔐 Subscription Guard - Verifikasi akses sebelum masuk app */}
+      <SubscriptionGuard featureSlug="akuntansi">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verification-success" element={<VerificationSuccess />} />
 
-        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
 
-        {/* Data */}
-        <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
-        <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
+          {/* Data */}
+          <Route path="/contacts" element={<ProtectedRoute><Contacts /></ProtectedRoute>} />
+          <Route path="/accounts" element={<ProtectedRoute><Accounts /></ProtectedRoute>} />
 
-        {/* Transaksi */}
-        <Route path="/initial-balance" element={<ProtectedRoute><InitialBalance /></ProtectedRoute>} />
-        <Route path="/journal-entry" element={<ProtectedRoute><JournalEntry /></ProtectedRoute>} />
+          {/* Transaksi */}
+          <Route path="/initial-balance" element={<ProtectedRoute><InitialBalance /></ProtectedRoute>} />
+          <Route path="/journal-entry" element={<ProtectedRoute><JournalEntry /></ProtectedRoute>} />
 
-        {/* Transaksi Khusus */}
-        <Route path="/capital" element={<ProtectedRoute><Capital /></ProtectedRoute>} />
-        <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />
-        <Route path="/expense" element={<ProtectedRoute><Expense /></ProtectedRoute>} />
-        <Route path="/receivables" element={<ProtectedRoute><Receivables /></ProtectedRoute>} />
-        <Route path="/payables" element={<ProtectedRoute><Payables /></ProtectedRoute>} />
+          {/* Transaksi Khusus */}
+          <Route path="/capital" element={<ProtectedRoute><Capital /></ProtectedRoute>} />
+          <Route path="/income" element={<ProtectedRoute><Income /></ProtectedRoute>} />
+          <Route path="/expense" element={<ProtectedRoute><Expense /></ProtectedRoute>} />
+          <Route path="/receivables" element={<ProtectedRoute><Receivables /></ProtectedRoute>} />
+          <Route path="/payables" element={<ProtectedRoute><Payables /></ProtectedRoute>} />
 
-        {/* Laporan */}
-        <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
-        <Route path="/ledger" element={<ProtectedRoute><Ledger /></ProtectedRoute>} />
-        <Route path="/trial-balance" element={<ProtectedRoute><TrialBalance /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
-        <Route path="/cash-flow" element={<ProtectedRoute><CashFlow /></ProtectedRoute>} />
-        <Route path="/equity-change" element={<ProtectedRoute><EquityChange /></ProtectedRoute>} />
+          {/* Laporan */}
+          <Route path="/journal" element={<ProtectedRoute><Journal /></ProtectedRoute>} />
+          <Route path="/ledger" element={<ProtectedRoute><Ledger /></ProtectedRoute>} />
+          <Route path="/trial-balance" element={<ProtectedRoute><TrialBalance /></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+          <Route path="/cash-flow" element={<ProtectedRoute><CashFlow /></ProtectedRoute>} />
+          <Route path="/equity-change" element={<ProtectedRoute><EquityChange /></ProtectedRoute>} />
 
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+        </Routes>
+      </SubscriptionGuard>
     </AuthProvider>
   );
 }
+
