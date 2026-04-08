@@ -95,7 +95,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    phone: normalizePhone(phone),
+                    phone: phone.includes('@') ? phone.trim() : normalizePhone(phone),
                     feature_slug: featureSlug
                 })
             });
@@ -143,7 +143,7 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
                             {featureSlug.replace(/-/g, ' ')}
                         </span>
                         <h1 className="text-2xl font-bold text-gray-900 mb-2">Verifikasi Akses</h1>
-                        <p className="text-gray-600">Masukkan nomor WhatsApp untuk melanjutkan</p>
+                        <p className="text-gray-600">Masukkan WA, Email, atau Nama untuk melanjutkan</p>
                     </div>
 
                     {error && (
@@ -155,16 +155,16 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
                     <form onSubmit={handleVerify}>
                         <div className="mb-4">
                             <label className="block text-sm font-medium text-gray-700 mb-2">
-                                Nomor WhatsApp
+                                WhatsApp / Email / Nama
                             </label>
                             <div className="relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500">+62</span>
+                                
                                 <input
                                     type="tel"
                                     value={phone}
-                                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                                    placeholder="8123456789"
-                                    className="w-full pl-12 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                                    onChange={(e) => setPhone(e.target.value)}
+                                    placeholder="WhatsApp, Email, atau Nama"
+                                    className="w-full px-4 pr-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
                                     required
                                 />
                             </div>
