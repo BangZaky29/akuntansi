@@ -24,7 +24,7 @@ const CONFIG = {
     // 🔧 LOCAL: 'http://localhost:5000/api/access/check'
     // 🌐 PRODUCTION:
     API_URL: 'https://api.nuansasolution.id/api/access/check',
-    PAYMENT_URL: 'https://payment.nuansasolution.id/',
+    PAYMENT_URL: 'https://generator.nuansasolution.id/',
     SESSION_EXPIRY_MS: 60 * 60 * 1000, // 1 hour
     STORAGE_KEY_PREFIX: 'ns_access_',
     DEFAULT_FEATURE_SLUG: 'akuntansi'

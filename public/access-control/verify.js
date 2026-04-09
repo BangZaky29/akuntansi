@@ -12,11 +12,11 @@
     const CONFIG = {
         // API endpoint for access check
         // 🔧 LOCAL: 'http://localhost:5000/api/access/check'
-        // 🌐 PRODUCTION: 'https://payment.nuansasolution.id/api/access/check'
+        // 🌐 PRODUCTION: 'https://generator.nuansasolution.id/api/access/check'
         API_URL: 'http://localhost:5000/api/access/check',
 
         // Payment/subscription page URL
-        PAYMENT_URL: 'https://payment.nuansasolution.id/',
+        PAYMENT_URL: 'https://generator.nuansasolution.id/',
 
         // Session expiry time (1 hour in milliseconds)
         SESSION_EXPIRY_MS: 60 * 60 * 1000,
