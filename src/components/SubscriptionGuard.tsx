@@ -160,7 +160,8 @@ const SubscriptionGuard: React.FC<SubscriptionGuardProps> = ({
                             <div className="relative">
                                 
                                 <input
-                                    type="tel"
+                                    type="text"
+                                    inputMode="text"
                                     value={phone}
                                     onChange={(e) => setPhone(e.target.value)}
                                     placeholder="WhatsApp, Email, atau Nama"
